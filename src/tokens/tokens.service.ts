@@ -11,15 +11,15 @@ export class TokensService {
 
   async getTokens(page_data: number, take_data: number) {
     const count = await this.prisma.token_address.count();
-    const { skip, take, totalPages, currentPage } = this.pgService.paginate({
+    const pagination = this.pgService.paginate({
       page_data,
       take_data,
       count,
     });
 
     const data = await this.prisma.token_address.findMany({
-      take,
-      skip,
+      take: pagination.take,
+      skip: pagination.skip,
       include: {
         address_token_address_addressToaddress: {
           select: {
@@ -27,13 +27,31 @@ export class TokensService {
           },
         },
       },
+      orderBy: {
+        blockNumber: 'desc',
+      },
     });
 
+    const formattedData = data.map((item) => ({
+      ...item,
+      addressInfo: item.address_token_address_addressToaddress,
+    }));
+
     return {
-      totalPages,
-      currentPage,
-      total: count,
-      data,
+      pagination,
+      data: formattedData,
     };
+  }
+
+  async getToken(tokeAddress: string) {
+    console.log('tokeAddress: ', tokeAddress);
+    const response = await this.prisma.token_address.findFirst({
+      where: {
+        address: tokeAddress,
+      },
+    });
+
+    console.log('response: ', response);
+    return response;
   }
 }

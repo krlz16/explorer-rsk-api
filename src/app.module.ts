@@ -9,7 +9,13 @@ import { TransactionsModule } from './transactions/transactions.module';
 import { PaginationModule } from './common/pagination/pagination.module';
 
 @Module({
-  imports: [TokensModule, BlocksModule, AddressesModule, TransactionsModule, PaginationModule],
+  imports: [
+    TokensModule,
+    BlocksModule,
+    AddressesModule,
+    TransactionsModule,
+    PaginationModule,
+  ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
 })

@@ -13,9 +13,15 @@ export class AddressesController {
     return this.addressService.getAddresses(page_data, Number(take_data));
   }
 
-  @Get(':id')
-  getAddress(@Param('id') id: string) {
-    console.log('address: ', id);
-    return this.addressService.getAddress(id);
+  @Get(':address')
+  getAddress(@Param('address') address: string) {
+    console.log('address: ', address);
+    return this.addressService.getAddress(address);
+  }
+
+  @Get('txs/:address')
+  getTxsByAddress(@Param('address') address: string) {
+    console.log('address: ', address);
+    return this.addressService.getTxsByAddress(address);
   }
 }

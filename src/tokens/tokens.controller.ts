@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { TokensService } from './tokens.service';
 
 @Controller('tokens')
@@ -11,5 +11,10 @@ export class TokensController {
     @Query('take_data') take_data: number,
   ) {
     return this.tokensService.getTokens(page_data, take_data);
+  }
+
+  @Get(':address')
+  getToken(@Param('address') address: string) {
+    return this.tokensService.getToken(address);
   }
 }

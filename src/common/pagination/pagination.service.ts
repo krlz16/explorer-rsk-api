@@ -18,11 +18,14 @@ export class PaginationService {
     const skip = (page - 1) * (take > count ? 0 : take);
     const totalPages = Math.ceil(count / take);
 
-    return {
+    const pagination = {
       skip,
       take,
       totalPages,
+      total: count,
       currentPage: page,
     };
+
+    return pagination;
   }
 }

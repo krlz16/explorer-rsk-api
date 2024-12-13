@@ -1,1 +1,1 @@
-export const TAKE_PAGE_DATA = 10;
+export const TAKE_PAGE_DATA = 50;
