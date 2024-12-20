@@ -28,15 +28,10 @@ export class TransactionsService {
     });
 
     console.time('transaction');
+    console.log('pagination.take: ', pagination.skip);
     const data = await this.prisma.transaction.findMany({
       take: pagination.take,
-      // cursor: cursor ? { hash: cursor } : undefined,
-      where: {
-        txType: {
-          in: ['contract deploy', 'normal'],
-        },
-      },
-      skip: pagination.take,
+      skip: pagination.skip,
       select: {
         hash: true,
         blockNumber: true,
@@ -48,15 +43,17 @@ export class TransactionsService {
         txType: true,
         receipt: true,
       },
-      orderBy: {
-        blockNumber: 'desc',
-      },
+      orderBy: [
+        {
+          txId: 'desc',
+        },
+      ],
     });
     console.timeEnd('transaction');
     console.time('response');
-    const response = data.map((v) => {
-      delete v.timestamp;
-      return v;
+    const response = data.map((tx) => {
+      tx.timestamp = tx.timestamp.toString() as unknown as bigint;
+      return tx;
     });
     console.timeEnd('response');
 

@@ -1,16 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { PaginationService } from 'src/common/pagination/pagination.service';
 import { PrismaService } from 'src/prisma.service';
-
+import { BlockParserService } from 'src/common/parsers/block-parser.service';
+import { block } from '@prisma/client';
 @Injectable()
 export class BlocksService {
   constructor(
     private prisma: PrismaService,
     private pgService: PaginationService,
+    private blockParser: BlockParserService,
   ) {}
 
   async getBlocks(page_data: number, take_data: number) {
-    const count = await this.prisma.address.count();
+    const count = await this.prisma.block.count();
 
     const pagination = this.pgService.paginate({
       page_data,
@@ -32,24 +34,19 @@ export class BlocksService {
         miner: true,
         size: true,
         timestamp: true,
+        difficulty: true,
+        totalDifficulty: true,
+        uncles: true,
       },
     });
-    const response = value.map((v) => {
-      const timestamp = Number(v.timestamp);
-      v.transactions = JSON.parse(v.transactions).length || 0;
-      const date = new Date(timestamp * 1000);
-      v.timestamp = date.toLocaleString() as unknown as bigint;
-      return v;
-    });
-
+    const formatData = this.blockParser.parseBlock(value as block[]);
     return {
       pagination,
-      data: response,
+      data: formatData,
     };
   }
 
   async getBlock(block: number | string) {
-    console.log('getBlock: ');
     const isNumber = typeof block === 'number';
 
     const blockQuery = this.prisma.block.findFirst({
@@ -64,15 +61,12 @@ export class BlocksService {
     if (!blockResponse) {
       throw new Error(`Block number ${block} not found`);
     }
+    const blocks = [blockResponse, navigation.block];
 
-    blockResponse.timestamp =
-      blockResponse.timestamp.toString() as unknown as bigint;
-    blockResponse.received =
-      blockResponse.received.toString() as unknown as bigint;
-    blockResponse.transactions = JSON.parse(blockResponse.transactions).length;
-
+    const formatData = this.blockParser.parseBlock(blocks as block[]);
+    delete navigation.block;
     return {
-      data: blockResponse,
+      data: formatData[0],
       navigation,
     };
   }
@@ -85,7 +79,9 @@ export class BlocksService {
     } else {
       const data = await this.prisma.block.findFirst({
         where: { hash: block },
-        select: { number: true },
+        select: {
+          number: true,
+        },
       });
 
       if (!data) {
@@ -98,17 +94,18 @@ export class BlocksService {
     const [prev, next] = await Promise.all([
       this.prisma.block.findFirst({
         where: { number: blockNumber - 1 },
-        select: { number: true },
+        select: { number: true, timestamp: true },
       }),
       this.prisma.block.findFirst({
         where: { number: blockNumber + 1 },
-        select: { number: true },
+        select: { number: true, timestamp: true },
       }),
     ]);
 
     return {
       prev: prev ? prev.number : null,
       next: next ? next.number : null,
+      block: prev,
     };
   }
 
@@ -138,7 +135,7 @@ export class BlocksService {
     });
 
     const response = data.map((v) => {
-      delete v.timestamp;
+      v.timestamp = v.timestamp.toString() as unknown as bigint;
       v.receipt = JSON.parse(v.receipt);
       return v;
     });
@@ -182,9 +179,9 @@ export class BlocksService {
       },
     });
 
-    const response = data.map((v) => {
-      delete v.timestamp;
-      return v;
+    const response = data.map((itx) => {
+      itx.timestamp = itx.timestamp.toString() as unknown as bigint;
+      return itx;
     });
 
     const formatData = response.map((b) => {

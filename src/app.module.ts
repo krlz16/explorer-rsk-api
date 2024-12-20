@@ -7,6 +7,8 @@ import { BlocksModule } from './blocks/blocks.module';
 import { AddressesModule } from './addresses/addresses.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { PaginationModule } from './common/pagination/pagination.module';
+import { ItxsModule } from './itxs/itxs.module';
+import { StatsModule } from './stats/stats.module';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { PaginationModule } from './common/pagination/pagination.module';
     AddressesModule,
     TransactionsModule,
     PaginationModule,
+    ItxsModule,
+    StatsModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
