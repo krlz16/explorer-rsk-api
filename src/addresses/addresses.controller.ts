@@ -18,10 +18,4 @@ export class AddressesController {
     console.log('address: ', address);
     return this.addressService.getAddress(address);
   }
-
-  @Get('txs/:address')
-  getTxsByAddress(@Param('address') address: string) {
-    console.log('address: ', address);
-    return this.addressService.getTxsByAddress(address);
-  }
 }

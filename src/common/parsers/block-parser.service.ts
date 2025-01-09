@@ -5,7 +5,7 @@ import { block as IBlock } from '@prisma/client';
 
 @Injectable()
 export class BlockParserService {
-  parseBlock(blocks: IBlock[]) {
+  formatBlock(blocks: IBlock[]) {
     const currentBlocks = [...blocks].reverse();
     const newBlocks = currentBlocks.slice(1);
     const formatData = newBlocks.map((block, i) => {
@@ -32,6 +32,7 @@ export class BlockParserService {
 
       return {
         ...block,
+        uncles: JSON.parse(block.uncles),
         minimumGasPrice: gasPrice,
         difficultyInGH: difficultyInGH,
         totalDifficultyInEH: totalDifficultyInEH,

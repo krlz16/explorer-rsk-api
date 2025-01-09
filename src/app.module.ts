@@ -9,6 +9,7 @@ import { TransactionsModule } from './transactions/transactions.module';
 import { PaginationModule } from './common/pagination/pagination.module';
 import { ItxsModule } from './itxs/itxs.module';
 import { StatsModule } from './stats/stats.module';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { StatsModule } from './stats/stats.module';
     PaginationModule,
     ItxsModule,
     StatsModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

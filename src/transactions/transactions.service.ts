@@ -10,25 +10,16 @@ export class TransactionsService {
   ) {}
 
   async getTxs(page_data: number, take_data: number) {
-    console.log('getTxs: ');
-    console.time('countQuery');
-
     let count = 100000;
-    console.log('page_data: ', page_data);
     if (page_data >= 2000) {
       count = await this.prisma.transaction.count();
     }
-
-    console.timeEnd('countQuery');
-
     const pagination = this.pgService.paginate({
       page_data,
       take_data,
       count,
     });
 
-    console.time('transaction');
-    console.log('pagination.take: ', pagination.skip);
     const data = await this.prisma.transaction.findMany({
       take: pagination.take,
       skip: pagination.skip,
@@ -42,6 +33,7 @@ export class TransactionsService {
         timestamp: true,
         txType: true,
         receipt: true,
+        date: true,
       },
       orderBy: [
         {
@@ -49,13 +41,11 @@ export class TransactionsService {
         },
       ],
     });
-    console.timeEnd('transaction');
-    console.time('response');
-    const response = data.map((tx) => {
+    const response = data?.map((tx) => {
       tx.timestamp = tx.timestamp.toString() as unknown as bigint;
+      tx.receipt = JSON.parse(tx.receipt);
       return tx;
     });
-    console.timeEnd('response');
 
     return {
       pagination,
@@ -72,7 +62,6 @@ export class TransactionsService {
         txId: 'desc',
       },
     });
-    console.log('data: ', data);
     data.timestamp = data.timestamp.toString() as unknown as bigint;
     data.receipt = JSON.parse(data.receipt);
 
@@ -81,18 +70,18 @@ export class TransactionsService {
     };
   }
 
-  async getIinternalTxsByTxHash(
-    hash: string,
+  async getTxsByBlock(
+    blockOrhash: number | string,
     page_data: number,
     take_data: number,
   ) {
-    console.log('hash: ==', hash);
+    console.log('getTxsByBlock: ');
+    const where: any =
+      typeof blockOrhash === 'number'
+        ? { blockNumber: blockOrhash }
+        : { blockHash: blockOrhash };
 
-    const where: any = {};
-    if (hash) where.transactionHash = hash;
-    console.log('where: ', where);
-
-    const count = await this.prisma.internal_transaction.count({ where });
+    const count = await this.prisma.transaction.count({ where });
 
     const pagination = this.pgService.paginate({
       page_data,
@@ -100,26 +89,73 @@ export class TransactionsService {
       count,
     });
 
-    const response = await this.prisma.internal_transaction.findMany({
-      where: {
-        transactionHash: hash,
+    const data = await this.prisma.transaction.findMany({
+      take: pagination.take,
+      skip: pagination.skip,
+      where,
+    });
+
+    const response = data.map((v) => {
+      v.timestamp = v.timestamp.toString() as unknown as bigint;
+      v.receipt = JSON.parse(v.receipt);
+      return v;
+    });
+
+    return {
+      pagination,
+      data: response,
+    };
+  }
+
+  async getNavigationTx(hash: string) {
+    console.log('hash: ', hash);
+  }
+
+  async getTxsByAddress(address: string, page_data: number, take_data: number) {
+    const where = {
+      OR: [
+        {
+          from: address,
+        },
+        {
+          to: address,
+        },
+      ],
+    };
+    const count = await this.prisma.transaction.count({ where });
+
+    const pagination = this.pgService.paginate({
+      page_data,
+      take_data,
+      count,
+    });
+    const response = await this.prisma.transaction.findMany({
+      take: pagination.take,
+      skip: pagination.skip,
+      where,
+      select: {
+        hash: true,
+        blockNumber: true,
+        from: true,
+        to: true,
+        value: true,
+        gasUsed: true,
+        timestamp: true,
+        txType: true,
+        receipt: true,
       },
       orderBy: {
-        internalTxId: 'desc',
+        txId: 'desc',
       },
     });
 
     const formatData = response.map((tx) => {
-      const { action, ...result } = tx;
-      result.timestamp = result.timestamp.toString() as unknown as bigint;
-      const parseAction = JSON.parse(action);
-      return {
-        ...parseAction,
-        ...result,
-      };
+      tx.timestamp = tx.timestamp.toString() as unknown as bigint;
+      tx.receipt = JSON.parse(tx.receipt);
+      return tx;
     });
+
     return {
-      pagination,
       data: formatData,
     };
   }
