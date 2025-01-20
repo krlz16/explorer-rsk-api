@@ -13,4 +13,17 @@ export class EventsController {
   ) {
     return this.eventsService.getEventsByAddress(address, page_data, take_data);
   }
+
+  @Get('/tx/:hash')
+  getEventByTxHash(
+    @Param('hash') hash: string,
+    @Param('page_data') page_data: number,
+    @Param('take_data') take_data: number,
+  ) {
+    return this.eventsService.getTransfersEventByTxHash(
+      hash,
+      page_data,
+      take_data,
+    );
+  }
 }

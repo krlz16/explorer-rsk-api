@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import BigNumber from 'bignumber.js';
 import { PaginationService } from 'src/common/pagination/pagination.service';
 import { PrismaService } from 'src/prisma.service';
 
@@ -44,12 +45,34 @@ export class TransactionsService {
     const response = data?.map((tx) => {
       tx.timestamp = tx.timestamp.toString() as unknown as bigint;
       tx.receipt = JSON.parse(tx.receipt);
+      tx.value = '0';
       return tx;
     });
 
     return {
       pagination,
       data: response,
+    };
+  }
+
+  async getLast24HoursTransactions() {
+    const now = Math.floor(Date.now() / 1000);
+    const last24Hours = now - 24 * 60 * 60;
+
+    const count = await this.prisma.transaction.count({
+      where: {
+        timestamp: {
+          gte: last24Hours,
+          lte: now,
+        },
+      },
+    });
+
+    console.log('Datos del último día:', count);
+    return {
+      data: {
+        count,
+      },
     };
   }
 
@@ -62,9 +85,17 @@ export class TransactionsService {
         txId: 'desc',
       },
     });
+    console.log('data: ', data);
     data.timestamp = data.timestamp.toString() as unknown as bigint;
     data.receipt = JSON.parse(data.receipt);
-
+    data.gasPrice = new BigNumber(data.gasPrice.toString())
+      .div(new BigNumber(10).pow(18))
+      .toFixed()
+      .toString();
+    data.value = new BigNumber(data.value.toString())
+      .div(new BigNumber(10).pow(18))
+      .toFixed()
+      .toString();
     return {
       data,
     };

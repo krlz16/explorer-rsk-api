@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import BigNumber from 'bignumber.js';
 import { PaginationService } from 'src/common/pagination/pagination.service';
 import { PrismaService } from 'src/prisma.service';
 
@@ -18,9 +19,28 @@ export class ItxsService {
         internalTxId: 'desc',
       },
     });
+    console.log('itx: ', itx);
     itx.timestamp = itx.timestamp.toString() as unknown as bigint;
-    itx.result = JSON.parse(itx.result);
-    itx.action = JSON.parse(itx.action);
+    const result = JSON.parse(itx.result) || {};
+    const action = JSON.parse(itx.action);
+
+    const gas = new BigNumber(action.gas.toString(), 16).toNumber().toString();
+
+    const gasUsed = new BigNumber(result?.gasUsed?.toString() || '0', 16)
+      .toNumber()
+      .toString();
+
+    console.log('gas: ', gas);
+    action.gas = gas;
+    // action.value = new BigNumber(action.value.toString(), 16)
+    //   .toNumber()
+    //   .toString();
+    action.value = 0;
+    console.log('result: ', result);
+    result.gasUsed = gasUsed || 0;
+    console.log('gasUsed: ', gasUsed);
+    itx.action = action;
+    itx.result = result;
     return {
       data: itx,
     };
@@ -53,6 +73,7 @@ export class ItxsService {
         timestamp: true,
         action: true,
         internalTxId: true,
+        error: true,
       },
       orderBy: {
         internalTxId: 'desc',

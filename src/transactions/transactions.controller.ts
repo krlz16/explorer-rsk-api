@@ -11,11 +11,19 @@ export class TransactionsController {
     @Query('page_data') page_data: number,
     @Query('take_data') take_data: number,
   ) {
+    console.log('getTxs: ');
     return this.txsService.getTxs(page_data, take_data);
+  }
+
+  @Get('/last24hrs')
+  getLast24HoursTransactions() {
+    console.log('getLast24HoursTransactions: ');
+    return this.txsService.getLast24HoursTransactions();
   }
 
   @Get(':hash')
   getTx(@Param('hash') hash: string) {
+    console.log('getTx: ');
     return this.txsService.getTx(hash);
   }
 

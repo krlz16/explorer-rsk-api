@@ -71,8 +71,9 @@ export class AddressParserService {
         ? JSON.parse(contract_creation_tx.tx)
         : null,
       ...contract,
-      contractMethods: contract.contract_method?.map((m) => m.method) || null,
-      interfaces: contract.contract_interface?.map((i) => i.interface) || null,
+      contract_method: contract.contract_method?.map((m) => m.method) || null,
+      contract_interface:
+        contract.contract_interface?.map((i) => i.interface) || null,
     };
     return data;
   }
