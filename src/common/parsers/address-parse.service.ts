@@ -13,15 +13,14 @@ export class AddressParserService {
         ...result
       } = a;
       const addressDetail =
-        address_latest_balance_address_latest_balance_addressToaddress;
-      console.log('addressDetail.balance: ', addressDetail.balance);
-      const balance = new BigNumber(addressDetail.balance.toString(), 16)
+        address_latest_balance_address_latest_balance_addressToaddress || null;
+      const balance = new BigNumber(addressDetail ? addressDetail.balance.toString() : 0, 16)
         .dividedBy(1e18)
         .toNumber();
       return {
         balance,
         ...result,
-        blockNumber: addressDetail.blockNumber,
+        blockNumber: addressDetail?.blockNumber,
       };
     });
   }
@@ -48,14 +47,11 @@ export class AddressParserService {
       contract_method: contractAddress?.contract_method || null,
       contract_interface: contractAddress?.contract_interface || null,
     };
-
     let balance =
       response?.address_latest_balance_address_latest_balance_addressToaddress
-        ?.balance || null;
-
+        ?.balance || 0;
     balance = new BigNumber(balance.toString(), 18).dividedBy(1e18).toNumber();
 
-    console.log('response: ', response);
     const data = {
       address: response?.address || null,
       balance,
