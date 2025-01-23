@@ -43,7 +43,7 @@ export class TokensService {
     };
   }
 
-  async getToken(tokeAddress: string) {
+  async getTokenByAddress(tokeAddress: string) {
     console.log('tokeAddress: ', tokeAddress);
     const response = await this.prisma.token_address.findFirst({
       where: {
@@ -52,6 +52,8 @@ export class TokensService {
     });
 
     console.log('response: ', response);
-    return response;
+    return {
+      data: response,
+    };
   }
 }

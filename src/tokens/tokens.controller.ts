@@ -15,6 +15,6 @@ export class TokensController {
 
   @Get(':address')
   getToken(@Param('address') address: string) {
-    return this.tokensService.getToken(address);
+    return this.tokensService.getTokenByAddress(address);
   }
 }

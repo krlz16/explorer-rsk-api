@@ -114,4 +114,25 @@ export class AddressesService {
       data: formatAddress,
     };
   }
+
+  async getContractDetail(address: string) {
+    const response = await this.prisma.verification_result.findFirst({
+      where: {
+        address,
+        match: true,
+      },
+      select: {
+        request: true,
+        abi: true,
+        timestamp: true,
+      },
+    });
+
+    response.timestamp = response?.timestamp.toString() as unknown as bigint;
+    response.request = JSON.parse(response.request);
+    response.abi = JSON.parse(response.abi);
+    return {
+      data: response,
+    };
+  }
 }

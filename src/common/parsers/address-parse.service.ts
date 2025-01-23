@@ -14,7 +14,6 @@ export class AddressParserService {
       } = a;
       const addressDetail =
         address_latest_balance_address_latest_balance_addressToaddress;
-      console.log('addressDetail.balance: ', addressDetail.balance);
       const balance = new BigNumber(addressDetail.balance.toString(), 16)
         .dividedBy(1e18)
         .toNumber();
@@ -32,14 +31,13 @@ export class AddressParserService {
     const { contract_contract_addressToaddress: contractAddress, ...response } =
       address || null;
 
-    console.log('contractAddress: ', contractAddress?.total_supply);
     const code = contractAddress?.code || null;
     const deployedCode = contractAddress?.deployedCode || null;
     const contract_creation_tx = contractAddress?.contract_creation_tx || null;
 
     let totalSupply = contractAddress?.total_supply[0]?.totalSupply || 0;
-    totalSupply = new BigNumber(totalSupply.toString(), 24)
-      .dividedBy(1e24)
+    totalSupply = new BigNumber(totalSupply.toString())
+      .dividedBy(1e18)
       .toNumber();
     const contract = {
       totalSupply,
@@ -49,13 +47,14 @@ export class AddressParserService {
       contract_interface: contractAddress?.contract_interface || null,
     };
 
+    console.log('response: ', response);
     let balance =
       response?.address_latest_balance_address_latest_balance_addressToaddress
         ?.balance || null;
 
-    balance = new BigNumber(balance.toString(), 18).dividedBy(1e18).toNumber();
+    balance = new BigNumber(balance.toString()).dividedBy(1e18).toNumber();
+    console.log('balance: ', balance);
 
-    console.log('response: ', response);
     const data = {
       address: response?.address || null,
       balance,

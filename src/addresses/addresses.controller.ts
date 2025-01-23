@@ -15,7 +15,10 @@ export class AddressesController {
 
   @Get(':address')
   getAddress(@Param('address') address: string) {
-    console.log('address: ', address);
     return this.addressService.getAddress(address);
+  }
+  @Get('/contract/:address')
+  getContractDetail(@Param('address') address: string) {
+    return this.addressService.getContractDetail(address);
   }
 }

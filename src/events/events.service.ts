@@ -54,7 +54,6 @@ export class EventsService {
       return e;
     });
 
-    console.log('response: ', response);
     return {
       pagination,
       data: formatData,
