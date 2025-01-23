@@ -17,8 +17,8 @@ export class AddressesController {
   getAddress(@Param('address') address: string) {
     return this.addressService.getAddress(address);
   }
-  @Get('/contract/:address')
-  getContractDetail(@Param('address') address: string) {
-    return this.addressService.getContractDetail(address);
+  @Get('verification/:address')
+  getContractVerification(@Param('address') address: string) {
+    return this.addressService.getContractVerification(address);
   }
 }

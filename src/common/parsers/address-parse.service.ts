@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { address, contract } from '@prisma/client';
+import { address, contract, verification_result } from '@prisma/client';
 import BigNumber from 'bignumber.js';
 
 @Injectable()
@@ -75,5 +75,31 @@ export class AddressParserService {
         contract.contract_interface?.map((i) => i.interface) || null,
     };
     return data;
+  }
+
+  formatContractVerification (verification: verification_result) {
+    const {
+      id,
+      // address,
+      match,
+      request,
+      // result,
+      abi,
+      // sources,
+      timestamp
+    } = verification
+
+    const contractVerification = {
+      id,
+      // address,
+      match,
+      // result: JSON.parse(result),
+      abi: JSON.parse(abi),
+      // sources: JSON.parse(sources),
+      request: JSON.parse(request), // FUTURE: we should use result prop instead of request prop
+      timestamp: timestamp.toString() as unknown as bigint
+    }
+
+    return contractVerification
   }
 }

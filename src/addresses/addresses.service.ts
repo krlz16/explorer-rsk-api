@@ -115,24 +115,38 @@ export class AddressesService {
     };
   }
 
-  async getContractDetail(address: string) {
-    const response = await this.prisma.verification_result.findFirst({
+  async getContractVerification(address: string) {
+    const verification = await this.prisma.verification_result.findFirst({
       where: {
         address,
-        match: true,
+        match: true
+      }
+    })
+
+    if (verification) {
+      return {
+        data: this.addressParser.formatContractVerification(verification),
+      }
+    }
+
+    return {
+      data: null
+    }
+  }
+
+  async isVerified(address: string) {
+    const verification = await this.prisma.verification_result.findFirst({
+      where: {
+        address,
+        match: true
       },
       select: {
-        request: true,
-        abi: true,
-        timestamp: true,
-      },
-    });
+        match: true
+      }
+    })
 
-    response.timestamp = response?.timestamp.toString() as unknown as bigint;
-    response.request = JSON.parse(response.request);
-    response.abi = JSON.parse(response.abi);
     return {
-      data: response,
-    };
+      data: !!verification
+    }
   }
 }
