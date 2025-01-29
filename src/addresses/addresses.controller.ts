@@ -1,8 +1,10 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, Logger } from '@nestjs/common';
 import { AddressesService } from './addresses.service';
 
 @Controller('addresses')
 export class AddressesController {
+  private readonly logger = new Logger(AddressesController.name);
+
   constructor(private addressService: AddressesService) {}
 
   @Get()
@@ -15,6 +17,7 @@ export class AddressesController {
 
   @Get(':address')
   getAddress(@Param('address') address: string) {
+    this.logger.log(`Fetching address details for ${address}`);
     return this.addressService.getAddress(address);
   }
   @Get('verification/:address')
