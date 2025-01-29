@@ -12,10 +12,7 @@ export class AddressesService {
   ) {}
 
   async getAddresses(page_data: number, take_data: number) {
-    console.log('getAddresses: ');
     const count = await this.prisma.address.count();
-    console.log('count: ', count);
-
     const pagination = this.pgService.paginate({
       page_data,
       take_data,
@@ -101,14 +98,12 @@ export class AddressesService {
         id: 'desc',
       },
     });
-    const res = await this.prisma.contract_verification.findFirst({
-      where: {
-        address,
-      },
-    });
-    console.log('res: ', res);
-    console.log('value: ', value);
+
     const formatAddress = this.addressParser.formatAddress(value);
+    if (value.type === 'contract') {
+      const isVerified = await this.isVerified(address);
+      formatAddress.isVerified = isVerified.data;
+    }
 
     return {
       data: formatAddress,
@@ -119,34 +114,34 @@ export class AddressesService {
     const verification = await this.prisma.verification_result.findFirst({
       where: {
         address,
-        match: true
-      }
-    })
+        match: true,
+      },
+    });
 
     if (verification) {
       return {
         data: this.addressParser.formatContractVerification(verification),
-      }
+      };
     }
 
     return {
-      data: null
-    }
+      data: null,
+    };
   }
 
   async isVerified(address: string) {
     const verification = await this.prisma.verification_result.findFirst({
       where: {
         address,
-        match: true
+        match: true,
       },
       select: {
-        match: true
-      }
-    })
+        match: true,
+      },
+    });
 
     return {
-      data: !!verification
-    }
+      data: !!verification,
+    };
   }
 }

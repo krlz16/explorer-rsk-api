@@ -47,15 +47,14 @@ export class AddressParserService {
       contract_interface: contractAddress?.contract_interface || null,
     };
 
-    console.log('response: ', response);
     let balance =
       response?.address_latest_balance_address_latest_balance_addressToaddress
         ?.balance || null;
 
     balance = new BigNumber(balance.toString()).dividedBy(1e18).toNumber();
-    console.log('balance: ', balance);
 
     const data = {
+      isVerified: null,
       address: response?.address || null,
       balance,
       blockNumber:
@@ -77,29 +76,56 @@ export class AddressParserService {
     return data;
   }
 
-  formatContractVerification (verification: verification_result) {
+  formatContractVerification(verification: verification_result) {
     const {
       id,
       // address,
       match,
       request,
-      // result,
+      result,
       abi,
-      // sources,
-      timestamp
-    } = verification
+      sources,
+      timestamp,
+    } = verification;
+
+    const files = this.formatContractFiles(JSON.parse(sources));
+    const dataRequest = JSON.parse(request);
 
     const contractVerification = {
       id,
       // address,
       match,
-      // result: JSON.parse(result),
+      result: JSON.parse(result),
       abi: JSON.parse(abi),
-      // sources: JSON.parse(sources),
-      request: JSON.parse(request), // FUTURE: we should use result prop instead of request prop
-      timestamp: timestamp.toString() as unknown as bigint
+      sources: files,
+      request: dataRequest, // FUTURE: we should use result prop instead of request prop
+      timestamp: timestamp.toString() as unknown as bigint,
+    };
+
+    return contractVerification;
+  }
+
+  formatContractFiles(sources: string | any) {
+    const data = sources[0]?.contents;
+    const fileRegex = /\/\/ File\s+(.*?)\n([\s\S]*?)(?=\/\/ File|$)/g;
+
+    const resources: { file: string; content: string }[] = [];
+    let match: RegExpExecArray | null;
+    while ((match = fileRegex.exec(data)) !== null) {
+      const fullPath = match[1].trim();
+      const file = fullPath.match(/([^\/]+\.sol)/)[1];
+
+      const content = match[2].trim();
+      const existFile = resources.find((f) => f.file === file);
+      if (!existFile) {
+        resources.push({ file, content });
+      }
     }
 
-    return contractVerification
+    if (resources.length === 0) {
+      resources.push({ file: sources[0].name, content: data.trim() });
+    }
+
+    return resources;
   }
 }

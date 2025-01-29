@@ -12,6 +12,7 @@ export class TransactionsService {
 
   async getTxs(page_data: number, take_data: number) {
     let count = 100000;
+    console.log('page_data: ', page_data);
     if (page_data >= 2000) {
       count = await this.prisma.transaction.count();
     }
