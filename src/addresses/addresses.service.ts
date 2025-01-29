@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PaginationService } from 'src/common/pagination/pagination.service';
-import { AddressParserService } from 'src/common/parsers/address-parse.service';
+import { AddressParserService } from 'src/common/parsers/address-parser.service';
 import { PrismaService } from 'src/prisma.service';
 
 @Injectable()
