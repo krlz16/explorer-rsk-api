@@ -15,7 +15,10 @@ export class AddressesController {
 
   @Get(':address')
   getAddress(@Param('address') address: string) {
-    console.log('address: ', address);
     return this.addressService.getAddress(address);
+  }
+  @Get('verification/:address')
+  getContractVerification(@Param('address') address: string) {
+    return this.addressService.getContractVerification(address);
   }
 }

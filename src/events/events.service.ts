@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, event } from '@prisma/client';
+import { isAddress } from '@rsksmart/rsk-utils';
 import BigNumber from 'bignumber.js';
 import { PaginationService } from 'src/common/pagination/pagination.service';
 import { PrismaService } from 'src/prisma.service';
@@ -54,25 +55,28 @@ export class EventsService {
       return e;
     });
 
-    console.log('response: ', response);
     return {
       pagination,
       data: formatData,
     };
   }
 
-  async getTransfersEventByTxHash(
-    hash: string,
+  async getTransfersEventByTxHashOrAddress(
+    addressOrhash: string,
     page_data: number,
     take_data: number,
   ) {
+    const isOneAddress = isAddress(addressOrhash);
+
     const where = {
-      transactionHash: hash,
       event: {
-        contains: 'Transfer',
+        equals: 'Transfer',
         mode: 'insensitive' as Prisma.QueryMode,
       },
+      [isOneAddress ? 'address' : 'transactionHash']: addressOrhash,
     };
+
+    console.log('where: ', where);
     const count = await this.prisma.event.count({ where });
 
     const pagination = this.pgService.paginate({
@@ -96,7 +100,6 @@ export class EventsService {
       },
     });
 
-    console.log('response: ', response);
     const formattedData = this.formatEvent(response);
     return {
       pagination,
@@ -111,9 +114,10 @@ export class EventsService {
       let totalSupply = 0;
       if (e.args?.length === 3) {
         totalSupply = new BigNumber(e.args[2].toString())
-          .dividedBy(1e18)
+          .dividedBy(new BigNumber(10).pow(18))
           .toNumber();
       }
+      console.log('totalSupply: ', totalSupply);
       const contrant_detail = {
         name: e.address_event_addressToaddress.name,
         symbol:

@@ -12,7 +12,10 @@ export class BlocksService {
   ) {}
 
   async getBlocks(page_data: number, take_data: number) {
-    const count = await this.prisma.block.count();
+    let count = 100000;
+    if (page_data >= 2000) {
+      count = await this.prisma.transaction.count();
+    }
 
     const pagination = this.pgService.paginate({
       page_data,

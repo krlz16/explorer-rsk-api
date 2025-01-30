@@ -68,11 +68,12 @@ export class BlockParserService {
 
   private calculateBlockHashrate(difficultyHex: string, time: string): number {
     const averageBlockTime = new BigNumber(time);
-    let blockHashrate = new BigNumber(difficultyHex).dividedBy(
-      averageBlockTime,
-    );
+    let blockHashrate: BigNumber | string = new BigNumber(
+      difficultyHex,
+    ).dividedBy(averageBlockTime);
+
     blockHashrate = add0x(blockHashrate.toString());
-    blockHashrate = new BigNumber(blockHashrate);
+    blockHashrate = new BigNumber(blockHashrate.toString());
     return blockHashrate.dividedBy(1e6).toNumber();
   }
 }
