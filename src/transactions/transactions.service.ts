@@ -78,7 +78,7 @@ export class TransactionsService {
   }
 
   async getTx(hash: string) {
-    const data = await this.prisma.transaction.findFirst({
+    const response = await this.prisma.transaction.findFirst({
       where: {
         hash,
       },
@@ -86,19 +86,25 @@ export class TransactionsService {
         txId: 'desc',
       },
     });
-    console.log('data: ', data);
-    data.timestamp = data.timestamp.toString() as unknown as bigint;
-    data.receipt = JSON.parse(data.receipt);
-    data.gasPrice = new BigNumber(data.gasPrice.toString())
+    if (!response) {
+      return {
+        data: null,
+        message: 'Transaction not found',
+      };
+    }
+    console.log('data: ', response);
+    response.timestamp = response.timestamp.toString() as unknown as bigint;
+    response.receipt = JSON.parse(response.receipt);
+    response.gasPrice = new BigNumber(response.gasPrice.toString())
       .div(new BigNumber(10).pow(18))
       .toFixed()
       .toString();
-    data.value = new BigNumber(data.value.toString())
+    response.value = new BigNumber(response.value.toString())
       .div(new BigNumber(10).pow(18))
       .toFixed()
       .toString();
     return {
-      data,
+      data: response,
     };
   }
 
@@ -137,10 +143,6 @@ export class TransactionsService {
       pagination,
       data: response,
     };
-  }
-
-  async getNavigationTx(hash: string) {
-    console.log('hash: ', hash);
   }
 
   async getTxsByAddress(address: string, page_data: number, take_data: number) {

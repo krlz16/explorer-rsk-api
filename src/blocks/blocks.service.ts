@@ -62,7 +62,10 @@ export class BlocksService {
     ]);
 
     if (!blockResponse) {
-      throw new Error(`Block number ${block} not found`);
+      return {
+        data: null,
+        message: 'Block not found',
+      };
     }
     const blocks = [blockResponse, navigation.block];
 
@@ -88,7 +91,10 @@ export class BlocksService {
       });
 
       if (!data) {
-        throw new Error(`Block with hash ${block} not found`);
+        return {
+          data: null,
+          message: 'Block not found',
+        };
       }
 
       blockNumber = data.number;
