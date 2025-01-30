@@ -1,114 +1,132 @@
-import { Injectable } from '@nestjs/common';
-import { PaginationService } from 'src/common/pagination/pagination.service';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { BlockParserService } from 'src/common/parsers/block-parser.service';
 import { block } from '@prisma/client';
+import { TAKE_PAGE_DATA } from 'src/common/constants';
+
 @Injectable()
 export class BlocksService {
+  private readonly logger = new Logger(BlocksService.name);
+
   constructor(
     private prisma: PrismaService,
-    private pgService: PaginationService,
     private blockParser: BlockParserService,
   ) {}
 
-  async getBlocks(page_data: number, take_data: number) {
-    let count = 100000;
-    if (page_data >= 2000) {
-      count = await this.prisma.transaction.count();
-    }
+  /**
+   * Fetch paginated blocks using keyset pagination.
+   * @param {number} take - Number of blocks to retrieve.
+   * @param {number | null} cursor - The block number to start from (optional).
+   * @returns Paginated block data.
+   */
+  async getBlocks(take: number = TAKE_PAGE_DATA, cursor?: number) {
+    try {
+      if (!Number.isInteger(take) || take < 1) {
+        throw new Error(
+          `Invalid "take" value: ${take}. Must be a positive integer.`,
+        );
+      }
 
-    const pagination = this.pgService.paginate({
-      page_data,
-      take_data,
-      count,
-    });
-
-    const value = await this.prisma.block.findMany({
-      take: pagination.take,
-      skip: pagination.skip,
-      orderBy: {
-        number: 'desc',
-      },
-      select: {
-        id: true,
-        number: true,
-        transactions: true,
-        hash: true,
-        miner: true,
-        size: true,
-        timestamp: true,
-        difficulty: true,
-        totalDifficulty: true,
-        uncles: true,
-      },
-    });
-    const formatData = this.blockParser.formatBlock(value as block[]);
-    return {
-      pagination,
-      data: formatData,
-    };
-  }
-
-  async getBlock(block: number | string) {
-    const isNumber = typeof block === 'number';
-
-    const blockQuery = this.prisma.block.findFirst({
-      where: isNumber ? { number: block } : { hash: block },
-    });
-
-    const [blockResponse, navigation] = await Promise.all([
-      blockQuery,
-      this.getNavigationBlocks(block),
-    ]);
-
-    if (!blockResponse) {
-      throw new Error(`Block number ${block} not found`);
-    }
-    const blocks = [blockResponse, navigation.block];
-
-    const formatData = this.blockParser.formatBlock(blocks as block[]);
-    delete navigation.block;
-    return {
-      data: formatData[0],
-      navigation,
-    };
-  }
-
-  async getNavigationBlocks(block: number | string) {
-    let blockNumber: number;
-
-    if (typeof block === 'number') {
-      blockNumber = block;
-    } else {
-      const data = await this.prisma.block.findFirst({
-        where: { hash: block },
+      const blocks = await this.prisma.block.findMany({
+        take,
+        ...(cursor ? { where: { number: { lt: cursor } } } : {}),
+        orderBy: { number: 'desc' },
         select: {
+          id: true,
           number: true,
+          transactions: true,
+          hash: true,
+          miner: true,
+          size: true,
+          timestamp: true,
+          difficulty: true,
+          totalDifficulty: true,
+          uncles: true,
         },
       });
 
-      if (!data) {
-        throw new Error(`Block with hash ${block} not found`);
+      if (blocks.length === 0) {
+        return {
+          pagination: {
+            nextCursor: null,
+            take,
+          },
+          data: [],
+        };
       }
 
-      blockNumber = data.number;
+      const formattedBlocks = this.blockParser.formatBlock(blocks as block[]);
+
+      const nextCursor =
+        formattedBlocks[formattedBlocks.length - 1].number || null;
+
+      return {
+        pagination: {
+          nextCursor,
+          take,
+        },
+        data: formattedBlocks,
+      };
+    } catch (error) {
+      throw new Error(`Failed to fetch blocks: ${error.message}`);
     }
+  }
 
-    const [prev, next] = await Promise.all([
-      this.prisma.block.findFirst({
-        where: { number: blockNumber - 1 },
-        select: { number: true, timestamp: true },
-      }),
-      this.prisma.block.findFirst({
-        where: { number: blockNumber + 1 },
-        select: { number: true, timestamp: true },
-      }),
-    ]);
+  /**
+   * Fetch a specific block by number or hash.
+   * @param {number | string} block - Block number or hash.
+   * @returns Block details.
+   */
+  async getBlock(block: number | string) {
+    try {
+      if (typeof block === 'number') {
+        if (!Number.isInteger(block) || block < 0) {
+          throw new Error(
+            `Invalid block number: ${block}. Must be a non-negative integer.`,
+          );
+        }
+      } else if (typeof block === 'string') {
+        if (!/^0x[a-fA-F0-9]{64}$/.test(block)) {
+          throw new Error(
+            `Invalid block hash format: ${block}. Must be a 64-character hex string.`,
+          );
+        }
+      } else {
+        throw new Error(
+          `Invalid block identifier: ${block}. Must be a number or a hash.`,
+        );
+      }
 
-    return {
-      prev: prev ? prev.number : null,
-      next: next ? next.number : null,
-      block: prev,
-    };
+      const blockResponse = await this.prisma.block.findFirst({
+        where: typeof block === 'number' ? { number: block } : { hash: block },
+      });
+
+      if (!blockResponse) {
+        throw new Error(`Block not found: ${block}`);
+      }
+
+      const prevBlock = await this.prisma.block.findFirst({
+        where: { number: blockResponse.number - 1 },
+        select: { number: true, timestamp: true },
+      });
+
+      const navigation = {
+        prev: prevBlock ? prevBlock.number : null,
+        next: blockResponse.number + 1,
+      };
+
+      const formattedData = this.blockParser.formatBlock(
+        prevBlock
+          ? ([blockResponse, prevBlock] as block[])
+          : ([blockResponse] as block[]),
+      );
+
+      return {
+        data: formattedData[0],
+        navigation,
+      };
+    } catch (error) {
+      throw new Error(`Failed to fetch block: ${error.message}`);
+    }
   }
 }
