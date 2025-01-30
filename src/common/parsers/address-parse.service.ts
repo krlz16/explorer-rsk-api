@@ -46,7 +46,6 @@ export class AddressParserService {
       contract_method: contractAddress?.contract_method || null,
       contract_interface: contractAddress?.contract_interface || null,
     };
-
     let balance =
       response?.address_latest_balance_address_latest_balance_addressToaddress
         ?.balance || null;
