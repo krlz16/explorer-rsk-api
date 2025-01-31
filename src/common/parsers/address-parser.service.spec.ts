@@ -83,6 +83,7 @@ describe('AddressParserService', () => {
       //   });
 
       expect(result).toEqual({
+        isVerified: null,
         address: '0x8dbf326e12a9ff37ed6ddf75ada548c2640a6482',
         balance: 0,
         blockNumber: 6011251,
@@ -256,6 +257,7 @@ describe('AddressParserService', () => {
       const result = service.formatAddress(mockAccountAddress);
 
       expect(result).toEqual({
+        isVerified: null,
         address: '0x1fab9a0e24ffc209b01faa5a61ad4366982d0b7f',
         balance: 64.67650077894078,
         blockNumber: 6013656,
