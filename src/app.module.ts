@@ -11,6 +11,7 @@ import { ItxsModule } from './itxs/itxs.module';
 import { StatsModule } from './stats/stats.module';
 import { EventsModule } from './events/events.module';
 import { VerificationsModule } from './verifications/verifications.module';
+import { BalancesModule } from './balances/balances.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { VerificationsModule } from './verifications/verifications.module';
     StatsModule,
     EventsModule,
     VerificationsModule,
+    BalancesModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

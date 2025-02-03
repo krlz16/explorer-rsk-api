@@ -20,8 +20,21 @@ export class EventsController {
     @Param('page_data') page_data: number,
     @Param('take_data') take_data: number,
   ) {
-    return this.eventsService.getTransfersEventByTxHash(
+    return this.eventsService.getTransfersEventByTxHashOrAddress(
       hash,
+      page_data,
+      take_data,
+    );
+  }
+
+  @Get('/transfer/:address')
+  getTransfersEventByAddress(
+    @Param('address') address: string,
+    @Param('page_data') page_data: number,
+    @Param('take_data') take_data: number,
+  ) {
+    return this.eventsService.getTransfersEventByTxHashOrAddress(
+      address,
       page_data,
       take_data,
     );

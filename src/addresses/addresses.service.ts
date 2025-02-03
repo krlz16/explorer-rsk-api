@@ -1,20 +1,27 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PaginationService } from 'src/common/pagination/pagination.service';
-import { AddressParserService } from 'src/common/parsers/address-parse.service';
+import { AddressParserService } from 'src/common/parsers/address-parser.service';
 import { PrismaService } from 'src/prisma.service';
 
 @Injectable()
 export class AddressesService {
+  private readonly logger = new Logger(AddressesService.name);
+
   constructor(
     private prisma: PrismaService,
     private pgService: PaginationService,
     private addressParser: AddressParserService,
   ) {}
 
+  /**
+   * Fetches a paginated list of addresses with latest balance and block number.
+   *
+   * @param {number} page_data - Page number.
+   * @param {number} take_data - Number of records per page.
+   * @returns {Promise<{ pagination: any, data: any }>} - Paginated list of addresses.
+   */
   async getAddresses(page_data: number, take_data: number) {
-    console.log('getAddresses: ');
     const count = await this.prisma.address.count();
-    console.log('count: ', count);
 
     const pagination = this.pgService.paginate({
       page_data,
@@ -38,19 +45,23 @@ export class AddressesService {
       },
     });
 
-    const formatData = this.addressParser.formatAddresses(data);
-
     return {
       pagination,
-      data: formatData,
+      data: this.addressParser.formatAddresses(data),
     };
   }
 
+  /**
+   * Fetches detailed information about a specific address.
+   *
+   * @param {string} address - The address to fetch details for.
+   * @returns {Promise<{ data: any }>} - The formatted address details.
+   */
   async getAddress(address: string) {
-    const value = await this.prisma.address.findFirst({
-      where: {
-        address: address.toLowerCase(),
-      },
+    const normalizedAddress = address.toLowerCase();
+
+    const addressData = await this.prisma.address.findFirst({
+      where: { address: normalizedAddress },
       include: {
         contract_destruction_tx: {
           select: {
@@ -97,21 +108,57 @@ export class AddressesService {
           },
         },
       },
-      orderBy: {
-        id: 'desc',
-      },
     });
-    const res = await this.prisma.contract_verification.findFirst({
-      where: {
-        address,
-      },
-    });
-    console.log('res: ', res);
-    console.log('value: ', value);
-    const formatAddress = this.addressParser.formatAddress(value);
 
+    if (!addressData) {
+      this.logger.warn(`Address not found: ${normalizedAddress}`);
+      return { data: null };
+    }
+
+    const formatAddress = this.addressParser.formatAddress(addressData);
+    
+    if (addressData.type === 'contract') {
+      const isVerified = await this.isVerified(address);
+      formatAddress.isVerified = isVerified.data;
+    }
+    
     return {
       data: formatAddress,
+    };
+  }
+
+  async getContractVerification(address: string) {
+    const verification = await this.prisma.verification_result.findFirst({
+      where: {
+        address,
+        match: true,
+      },
+    });
+
+    if (verification) {
+      return {
+        data: this.addressParser.formatContractVerification(verification),
+      };
+    }
+
+    return {
+      data: null,
+    };
+  }
+
+  async isVerified(address: string) {
+    const verification = await this.prisma.verification_result.findFirst({
+      where: {
+        address,
+        match: true,
+      },
+      select: {
+        match: true,
+      },
+    });
+
+    return {
+      data: !!verification,
     };
   }
 }
