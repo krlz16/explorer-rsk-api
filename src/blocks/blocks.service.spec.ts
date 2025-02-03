@@ -1,18 +1,237 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BlocksService } from './blocks.service';
+import { PrismaService } from 'src/prisma.service';
+import { BlockParserService } from 'src/common/parsers/block-parser.service';
 
 describe('BlocksService', () => {
   let service: BlocksService;
+  let prismaMock: PrismaService;
+  let blockParserMock: BlockParserService;
 
   beforeEach(async () => {
+    prismaMock = {
+      block: {
+        findMany: jest.fn(),
+        findFirst: jest.fn(),
+      },
+    } as unknown as PrismaService;
+
+    blockParserMock = {
+      formatBlock: jest.fn(),
+    } as unknown as BlockParserService;
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [BlocksService],
+      providers: [
+        BlocksService,
+        {
+          provide: PrismaService,
+          useValue: prismaMock,
+        },
+        {
+          provide: BlockParserService,
+          useValue: blockParserMock,
+        },
+      ],
     }).compile();
 
     service = module.get<BlocksService>(BlocksService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  // ✅ TEST: getBlocks() should return paginated blocks
+  it('should return paginated blocks with a next cursor', async () => {
+    const mockBlocks = [
+      {
+        id: '1',
+        number: 100,
+        hash: '0xabc',
+        miner: '0xminer',
+        size: 2000,
+        timestamp: 1234567890,
+        difficulty: '0x1',
+        totalDifficulty: '0x2',
+        uncles: '[]',
+        transactions: '[]',
+      },
+      {
+        id: '2',
+        number: 99,
+        hash: '0xdef',
+        miner: '0xminer',
+        size: 1500,
+        timestamp: 1234567880,
+        difficulty: '0x1',
+        totalDifficulty: '0x2',
+        uncles: '[]',
+        transactions: '[]',
+      },
+    ];
+
+    const formattedBlocks = [
+      { id: '1', number: 100, hash: '0xabc' },
+      { id: '2', number: 99, hash: '0xdef' },
+    ];
+
+    (prismaMock.block.findMany as jest.Mock).mockResolvedValue(mockBlocks);
+    (blockParserMock.formatBlock as jest.Mock).mockReturnValue(formattedBlocks);
+
+    const result = await service.getBlocks(2);
+
+    expect(result).toEqual({
+      pagination: { nextCursor: 99, take: 2 },
+      data: formattedBlocks,
+    });
+
+    expect(prismaMock.block.findMany).toHaveBeenCalledWith({
+      take: 2,
+      orderBy: { number: 'desc' },
+      select: expect.any(Object),
+    });
+  });
+
+  // ✅ TEST: getBlocks() should return empty response when no blocks exist
+  it('should return empty response when no blocks exist', async () => {
+    (prismaMock.block.findMany as jest.Mock).mockResolvedValue([]);
+    (blockParserMock.formatBlock as jest.Mock).mockResolvedValue([]);
+
+    const result = await service.getBlocks(2);
+
+    expect(result).toEqual({
+      pagination: { nextCursor: null, take: 2 },
+      data: [],
+    });
+
+    expect(prismaMock.block.findMany).toHaveBeenCalledWith({
+      take: 2,
+      orderBy: { number: 'desc' },
+      select: expect.any(Object),
+    });
+  });
+
+  // ✅ TEST: getBlocks() should throw an error for invalid take values
+  it('should throw an error for invalid take values', async () => {
+    await expect(service.getBlocks(-1)).rejects.toThrow(
+      'Invalid "take" value: -1. Must be a positive integer.',
+    );
+  });
+
+  // ✅ TEST: getBlock() should return a block by number
+  it('should return a block by number', async () => {
+    const mockBlock = {
+      id: '1',
+      number: 10,
+      transactions: '[]',
+      hash: '0xabc',
+      miner: '0xminer',
+      size: 100,
+      timestamp: 1700000000,
+      difficulty: '0x1',
+      totalDifficulty: '0x10',
+      uncles: '[]',
+    };
+
+    (prismaMock.block.findFirst as jest.Mock).mockResolvedValue(mockBlock);
+    (blockParserMock.formatBlock as jest.Mock).mockReturnValue([mockBlock]);
+
+    const result = await service.getBlock(10);
+
+    expect(result).toEqual({
+      data: mockBlock,
+      navigation: { prev: 10, next: mockBlock.number + 1 },
+    });
+  });
+
+  // ✅ TEST: getBlock() should return a block by hash
+  it('should return a block by hash', async () => {
+    const mockBlock = {
+      id: '1',
+      number: 10,
+      transactions: '[]',
+      hash: '0x5a5ff4628a01ccc79909eaea7004bc90620eefd1374f61c5c41928f780ad47df',
+      miner: '0xminer',
+      size: 100,
+      timestamp: 1700000000,
+      difficulty: '0x1',
+      totalDifficulty: '0x10',
+      uncles: '[]',
+    };
+
+    (prismaMock.block.findFirst as jest.Mock).mockResolvedValue(mockBlock);
+    (blockParserMock.formatBlock as jest.Mock).mockReturnValue([mockBlock]);
+
+    const result = await service.getBlock(
+      '0x5a5ff4628a01ccc79909eaea7004bc90620eefd1374f61c5c41928f780ad47df',
+    );
+
+    expect(result).toEqual({
+      data: mockBlock,
+      navigation: { prev: 10, next: 11 },
+    });
+  });
+
+  it('should return block details with navigation', async () => {
+    const mockBlock = {
+      id: '1',
+      number: 100,
+      hash: '0xabc',
+      miner: '0xminer',
+      size: 2000,
+      timestamp: 1234567890,
+      difficulty: '0x1',
+      totalDifficulty: '0x2',
+      uncles: '[]',
+      transactions: '[]',
+    };
+
+    const prevBlock = {
+      number: 99,
+      timestamp: 1234567880,
+    };
+
+    const formattedBlock = {
+      id: '1',
+      number: 100,
+      hash: '0xabc',
+    };
+
+    (prismaMock.block.findFirst as jest.Mock)
+      .mockResolvedValueOnce(mockBlock) // First call: Fetch block
+      .mockResolvedValueOnce(prevBlock); // Second call: Fetch previous block
+
+    (blockParserMock.formatBlock as jest.Mock).mockReturnValue([
+      formattedBlock,
+    ]);
+
+    const result = await service.getBlock(100);
+
+    expect(result).toEqual({
+      data: formattedBlock,
+      navigation: { prev: 99, next: 101 },
+    });
+
+    expect(prismaMock.block.findFirst).toHaveBeenCalledTimes(2);
+  });
+
+  it('should throw an error if the block is not found', async () => {
+    (prismaMock.block.findFirst as jest.Mock).mockResolvedValue(null);
+
+    await expect(service.getBlock(100)).rejects.toThrow('Block not found: 100');
+
+    expect(prismaMock.block.findFirst).toHaveBeenCalledTimes(1);
+  });
+
+  it('should throw an error for invalid block number', async () => {
+    await expect(service.getBlock(-1)).rejects.toThrow(
+      'Invalid block number: -1. Must be a non-negative integer.',
+    );
+  });
+
+  it('should throw an error for invalid block hash', async () => {
+    await expect(service.getBlock('invalid_hash')).rejects.toThrow(
+      'Invalid block hash format: invalid_hash. Must be a 64-character hex string.',
+    );
   });
 });
