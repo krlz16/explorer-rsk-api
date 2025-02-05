@@ -76,7 +76,6 @@ export class EventsService {
       [isOneAddress ? 'address' : 'transactionHash']: addressOrhash,
     };
 
-    console.log('where: ', where);
     const count = await this.prisma.event.count({ where });
 
     const pagination = this.pgService.paginate({
@@ -117,7 +116,6 @@ export class EventsService {
           .dividedBy(new BigNumber(10).pow(18))
           .toNumber();
       }
-      console.log('totalSupply: ', totalSupply);
       const contrant_detail = {
         name: e.address_event_addressToaddress.name,
         symbol:

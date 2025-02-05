@@ -64,7 +64,6 @@ export class BlocksService {
     if (!blockResponse) {
       return {
         data: null,
-        message: 'Block not found',
       };
     }
     const blocks = [blockResponse, navigation.block];
@@ -93,7 +92,6 @@ export class BlocksService {
       if (!data) {
         return {
           data: null,
-          message: 'Block not found',
         };
       }
 

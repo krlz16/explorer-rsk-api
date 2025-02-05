@@ -116,7 +116,6 @@ export class TokensService {
       };
     });
 
-    console.log('response: ', response);
     return {
       data: formatData,
     };

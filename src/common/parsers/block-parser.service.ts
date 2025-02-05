@@ -27,7 +27,6 @@ export class BlockParserService {
       const gasPrice = new BigNumber(block.minimumGasPrice)
         .dividedBy(1e9)
         .toNumber();
-      console.log('gasPrice: ', gasPrice);
       delete block?.received;
 
       return {

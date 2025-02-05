@@ -44,7 +44,7 @@ export class AddressesService {
   }
 
   async getAddress(address: string) {
-    const value = await this.prisma.address.findFirst({
+    const response = await this.prisma.address.findFirst({
       where: {
         address: address.toLowerCase(),
       },
@@ -99,8 +99,14 @@ export class AddressesService {
       },
     });
 
-    const formatAddress = this.addressParser.formatAddress(value);
-    if (value.type === 'contract') {
+    if (!response) {
+      return {
+        data: null,
+      };
+    }
+
+    const formatAddress = this.addressParser.formatAddress(response);
+    if (response.type === 'contract') {
       const isVerified = await this.isVerified(address);
       formatAddress.isVerified = isVerified.data;
     }

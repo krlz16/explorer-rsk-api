@@ -19,7 +19,6 @@ export class ItxsService {
         internalTxId: 'desc',
       },
     });
-    console.log('itx: ', itx);
     itx.timestamp = itx.timestamp.toString() as unknown as bigint;
     const result = JSON.parse(itx.result) || {};
     const action = JSON.parse(itx.action);
