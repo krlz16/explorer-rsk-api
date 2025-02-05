@@ -70,7 +70,21 @@ export class VerificationsService {
       );
       const result = await response.json();
       const match = await this.checkResult(result);
-
+      let saveNewItem: any;
+      if (match) {
+        saveNewItem = await this.prisma.verification_result.create({
+          data: {
+            id: crypto.randomUUID(),
+            abi: JSON.stringify(result.abi),
+            address: dataParsed.address,
+            match: match,
+            request: data,
+            result: JSON.stringify(result),
+            sources: JSON.stringify(result.usedSources),
+            timestamp: Date.now(),
+          },
+        });
+      }
       return {
         success: match,
         message: match
@@ -80,7 +94,8 @@ export class VerificationsService {
           address: result.address,
           version: result.version,
           name: result.name,
-          dataResponse: result.data ?? 'No data',
+          dataResponse: JSON.stringify(result) ?? 'No data',
+          storedInDB: saveNewItem.toString(),
         },
       };
     } catch (error) {

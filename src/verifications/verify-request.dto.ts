@@ -27,7 +27,7 @@ class SettingsDto {
   evmVersion?: string;
 }
 
-class ImportDto {
+export class ImportDto {
   @IsString()
   name: string;
 
