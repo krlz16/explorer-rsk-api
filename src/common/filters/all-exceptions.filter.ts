@@ -33,7 +33,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       : 'UnknownService';
 
     this.logger.error(
-      `[${serviceName}] Error ${status}: ${JSON.stringify(message)} (URL: ${request.url})`,
+      `[${serviceName}] ${status >= 500 ? 'Server Error' : 'Client Error'} ${status}: ${JSON.stringify(message)} (URL: ${request.url})`,
       stack,
     );
 
