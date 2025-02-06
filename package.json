@@ -27,6 +27,7 @@
     "@nestjs/common": "^11.0.8",
     "@nestjs/core": "^11.0.8",
     "@nestjs/platform-express": "^11.0.8",
+    "@nestjs/swagger": "^11.0.3",
     "@prisma/client": "^6.3.1",
     "@rsksmart/rsk-utils": "^2.0.5",
     "bignumber.js": "^9.1.2",
