@@ -1,5 +1,6 @@
 import { Controller, Get, Param, Query, Logger } from '@nestjs/common';
 import { AddressesService } from './addresses.service';
+import { TAKE_PAGE_DATA } from 'src/common/constants';
 
 @Controller('addresses')
 export class AddressesController {
@@ -9,10 +10,11 @@ export class AddressesController {
 
   @Get()
   getAllAddresses(
-    @Query('page_data') page_data: number,
-    @Query('take_data') take_data: number,
+    @Query('take') take?: number,
+    @Query('cursor') cursor?: number,
   ) {
-    return this.addressService.getAddresses(page_data, Number(take_data));
+    const takeData = take || TAKE_PAGE_DATA;
+    return this.addressService.getAddresses(takeData, cursor);
   }
 
   @Get(':address')
