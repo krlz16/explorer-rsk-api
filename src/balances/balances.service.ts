@@ -1,7 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import BigNumber from 'bignumber.js';
 import { TAKE_PAGE_DATA } from 'src/common/constants';
 import { PrismaService } from 'src/prisma.service';
+import { isAddress } from '@rsksmart/rsk-utils';
 
 @Injectable()
 export class BalancesService {
@@ -21,10 +26,14 @@ export class BalancesService {
   ) {
     try {
       if (!Number.isInteger(take) || take < 1) {
-        throw new Error(
+        throw new BadRequestException(
           `Invalid "take" value: ${take}. Must be a positive integer.`,
         );
       }
+      if (!isAddress(address) || !address.includes('0x')) {
+        throw new BadRequestException(`Invalid address: ${address}`);
+      }
+
       const where = {
         address,
         ...(cursor ? { blockNumber: { lt: cursor } } : {}),
@@ -52,7 +61,9 @@ export class BalancesService {
       });
 
       const nextCursor =
-        formatBalance[formatBalance.length - 1].blockNumber || null;
+        formatBalance.length > 0
+          ? formatBalance[formatBalance.length - 1].blockNumber
+          : null;
 
       return {
         pagination: {
@@ -62,6 +73,12 @@ export class BalancesService {
         data: formatBalance,
       };
     } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
       throw new Error(`Failed to fetch balances by address: ${error.message}`);
     }
   }

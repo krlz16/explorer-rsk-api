@@ -59,7 +59,10 @@ describe('BalancesService', () => {
 
     (prismaMock.balance.findMany as jest.Mock).mockResolvedValue(mockBalances);
 
-    const result = await service.getBalanceByAddress('0xAddress', 2);
+    const result = await service.getBalanceByAddress(
+      '0x6306395B37120b1114EF08ee160f7C2f3a263558',
+      2,
+    );
 
     expect(result.pagination).toEqual({
       nextCursor: 99,
@@ -76,16 +79,36 @@ describe('BalancesService', () => {
 
     expect(prismaMock.balance.findMany).toHaveBeenCalledWith({
       take: 2,
-      where: { address: '0xAddress' },
+      where: { address: '0x6306395B37120b1114EF08ee160f7C2f3a263558' },
       orderBy: { blockNumber: 'desc' },
       select: expect.any(Object),
     });
   });
 
+  it('should throw an error if the address is invalid', async () => {
+    const invalidAddresses = [
+      '0x1234567890abcdef1234567890abcdef1234567',
+      '1234567890abcdef1234567890abcdef12345678',
+      '0xGHIJKLMNOPQRSTUVWXYZ1234567890abcdef12',
+      '',
+      null,
+      undefined,
+    ];
+
+    for (const address of invalidAddresses) {
+      await expect(
+        service.getBalanceByAddress(address as string, 2),
+      ).rejects.toThrow(`Invalid address: ${address}`);
+    }
+  });
+
   it('should return empty response when no balances exist', async () => {
     (prismaMock.balance.findMany as jest.Mock).mockResolvedValue([]);
 
-    const result = await service.getBalanceByAddress('0xAddress', 2);
+    const result = await service.getBalanceByAddress(
+      '0x6306395B37120b1114EF08ee160f7C2f3a263558',
+      2,
+    );
 
     expect(result).toEqual({
       pagination: { nextCursor: null, take: 2 },
@@ -94,16 +117,19 @@ describe('BalancesService', () => {
 
     expect(prismaMock.balance.findMany).toHaveBeenCalledWith({
       take: 2,
-      where: { address: '0xAddress' },
+      where: { address: '0x6306395B37120b1114EF08ee160f7C2f3a263558' },
       orderBy: { blockNumber: 'desc' },
       select: expect.any(Object),
     });
   });
 
   it('should throw an error for invalid take values', async () => {
-    await expect(service.getBalanceByAddress('0xAddress', -1)).rejects.toThrow(
-      'Invalid "take" value: -1. Must be a positive integer.',
-    );
+    await expect(
+      service.getBalanceByAddress(
+        '0x6306395B37120b1114EF08ee160f7C2f3a263558',
+        -1,
+      ),
+    ).rejects.toThrow('Invalid "take" value: -1. Must be a positive integer.');
   });
 
   it('should return balances with pagination and cursor', async () => {
@@ -124,18 +150,22 @@ describe('BalancesService', () => {
       {
         blockNumber: 50,
         timestamp: '1700000002',
-        balance: 11.479403,
+        balance: 11.65159050511951272,
       },
       {
         blockNumber: 49,
         timestamp: '1700000003',
-        balance: 1.30555745,
+        balance: 1.311768467294899695,
       },
     ];
 
     (prismaMock.balance.findMany as jest.Mock).mockResolvedValue(mockBalances);
 
-    const result = await service.getBalanceByAddress('0xAddress', 2, 51);
+    const result = await service.getBalanceByAddress(
+      '0x6306395B37120b1114EF08ee160f7C2f3a263558',
+      2,
+      51,
+    );
 
     expect(result.pagination).toEqual({ nextCursor: 49, take: 2 });
 
@@ -150,7 +180,10 @@ describe('BalancesService', () => {
 
     expect(prismaMock.balance.findMany).toHaveBeenCalledWith({
       take: 2,
-      where: { address: '0xAddress', blockNumber: { lt: 51 } },
+      where: {
+        address: '0x6306395B37120b1114EF08ee160f7C2f3a263558',
+        blockNumber: { lt: 51 },
+      },
       orderBy: { blockNumber: 'desc' },
       select: expect.any(Object),
     });
@@ -161,8 +194,11 @@ describe('BalancesService', () => {
       new Error('Database error'),
     );
 
-    await expect(service.getBalanceByAddress('0xAddress', 2)).rejects.toThrow(
-      'Failed to fetch balances by address: Database error',
-    );
+    await expect(
+      service.getBalanceByAddress(
+        '0x6306395B37120b1114EF08ee160f7C2f3a263558',
+        2,
+      ),
+    ).rejects.toThrow('Failed to fetch balances by address: Database error');
   });
 });
