@@ -116,12 +116,12 @@ export class AddressesService {
     }
 
     const formatAddress = this.addressParser.formatAddress(addressData);
-    
+
     if (addressData.type === 'contract') {
       const isVerified = await this.isVerified(address);
       formatAddress.isVerified = isVerified.data;
     }
-    
+
     return {
       data: formatAddress,
     };
