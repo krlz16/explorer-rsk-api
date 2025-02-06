@@ -29,6 +29,10 @@ export class VerificationsService {
         throw new BadRequestException('Compiler version is required');
       }
 
+      if (!this.isValidVersion(dataParsed.version)) {
+        throw new BadRequestException('Invalid compiler version provided');
+      }
+
       if (!dataParsed.name) {
         throw new BadRequestException('Contract name is required');
       }
@@ -118,5 +122,9 @@ export class VerificationsService {
     } catch (err) {
       throw new Error('error checking result: ' + err);
     }
+  }
+  private isValidVersion(version: string): boolean {
+    const solidityVersionRegex = /^\d+\.\d+\.\d+$/;
+    return solidityVersionRegex.test(version);
   }
 }
