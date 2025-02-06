@@ -69,6 +69,23 @@ describe('BalancesService', () => {
     });
   });
 
+  it('should throw an error if the address is invalid', async () => {
+    const invalidAddresses = [
+      '0x1234567890abcdef1234567890abcdef1234567',
+      '1234567890abcdef1234567890abcdef12345678',
+      '0xGHIJKLMNOPQRSTUVWXYZ1234567890abcdef12',
+      '',
+      null,
+      undefined,
+    ];
+
+    for (const address of invalidAddresses) {
+      await expect(
+        service.getBalanceByAddress(address as string, 2),
+      ).rejects.toThrow(`Invalid address: ${address}`);
+    }
+  });
+
   it('should return empty response when no balances exist', async () => {
     (prismaMock.balance.findMany as jest.Mock).mockResolvedValue([]);
 
