@@ -19,7 +19,6 @@ export class BalancesService {
       address,
     };
     const count = await this.prisma.balance.count({ where });
-    console.log('count: getBalanceByAddress', count);
 
     const pagination = this.pgService.paginate({
       page_data,
@@ -37,7 +36,6 @@ export class BalancesService {
         balance: true,
       },
     });
-    console.log('response: ', response);
 
     const formatBalance = response.map((b) => {
       b.timestamp = b.timestamp.toString() as unknown as bigint;
