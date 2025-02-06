@@ -17,4 +17,9 @@ export class TokensController {
   getToken(@Param('address') address: string) {
     return this.tokensService.getTokenByAddress(address);
   }
+
+  @Get('/search/:value')
+  getTokenByNameOrSymbol(@Param('value') value: string) {
+    return this.tokensService.getTokenByNameOrSymbol(value);
+  }
 }
