@@ -40,7 +40,6 @@ export class VerificationsService {
         const jsonContents = file.buffer.toString('utf-8');
         const { sources, settings } = JSON.parse(jsonContents);
         if (!sources || !settings) {
-          console.error('Invalid JSON: Missing sources or settings');
           throw new BadRequestException(
             'Error, missing sources or settings in file',
           );
@@ -109,8 +108,10 @@ export class VerificationsService {
         },
       };
     } catch (error) {
-      console.error('Error in verify function:', error);
-      throw new BadRequestException('Error processing FormData');
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new Error(`Error on contract verification: ${error.message}`);
     }
   }
   private async checkResult({ bytecodeHash, resultBytecodeHash }) {
