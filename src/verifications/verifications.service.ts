@@ -3,6 +3,7 @@ import { EVM_VERSIONS } from 'src/constants/evm.constants';
 import { PrismaService } from 'src/prisma.service';
 import { VerifyRequestDto } from './verify-request.dto';
 import { Multer } from 'multer';
+import { isAddress } from '@rsksmart/rsk-utils';
 
 @Injectable()
 export class VerificationsService {
@@ -18,7 +19,12 @@ export class VerificationsService {
       if (!dataParsed.address) {
         throw new BadRequestException('Address is required');
       }
-
+      if (
+        !isAddress(dataParsed.address) ||
+        !dataParsed.address.includes('0x')
+      ) {
+        throw new BadRequestException(`Invalid address: ${dataParsed.address}`);
+      }
       if (!dataParsed.version) {
         throw new BadRequestException('Compiler version is required');
       }
