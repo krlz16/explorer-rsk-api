@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma, event } from '@prisma/client';
 import { isAddress } from '@rsksmart/rsk-utils';
 import BigNumber from 'bignumber.js';
@@ -11,54 +11,76 @@ export class EventsService {
     private prisma: PrismaService,
     private pgService: PaginationService,
   ) {}
+  /**
+   * Fetch paginated events per address using keyset pagination.
+   * @param {string} address - The address to filter events by.
+   * @param {number} take - Number of records to retrieve.
+   * @param {number} cursor - The block number to start from (optional).
+   * @returns Paginated events by address data.
+   */
+  async getEventsByAddress(address: string, take: number, cursor?: number) {
+    try {
+      if (!Number.isInteger(take) || take < 1) {
+        throw new BadRequestException(
+          `Invalid "take" value: ${take}. Must be a positive integer.`,
+        );
+      }
 
-  async getEventsByAddress(
-    address: string,
-    page_data: number,
-    take_data: number,
-  ) {
-    const where = {
-      address_in_event: {
-        some: {
-          address,
-        },
-      },
-    };
-    const count = await this.prisma.event.count({ where });
-
-    const pagination = this.pgService.paginate({
-      page_data,
-      take_data,
-      count,
-    });
-    const response = await this.prisma.event.findMany({
-      take: pagination.take,
-      skip: pagination.skip,
-      where,
-      include: {
+      const where = {
         address_in_event: {
-          select: {
-            address: true,
-            isEventEmitterAddress: true,
+          some: { address },
+        },
+        ...(cursor ? { blockNumber: { lt: cursor } } : {}),
+      };
+
+      const response = await this.prisma.event.findMany({
+        take,
+        where,
+        include: {
+          address_in_event: {
+            select: {
+              address: true,
+              isEventEmitterAddress: true,
+            },
           },
         },
-      },
-      orderBy: {
-        eventId: 'desc',
-      },
-    });
+        orderBy: {
+          eventId: 'desc',
+        },
+      });
 
-    const formatData = response.map((e) => {
-      e.timestamp = e.timestamp.toString() as unknown as bigint;
-      e.abi = JSON.parse(e.abi);
-      e.args = JSON.parse(e.args);
-      return e;
-    });
+      if (response.length <= 0) {
+        return {
+          pagination: {
+            nextCursor: null,
+            take,
+          },
+          data: [],
+        };
+      }
 
-    return {
-      pagination,
-      data: formatData,
-    };
+      const formattedData = response.map((e) => {
+        e.timestamp = e.timestamp.toString() as unknown as bigint;
+        e.abi = JSON.parse(e.abi);
+        e.args = JSON.parse(e.args);
+        return e;
+      });
+
+      const nextCursor = formattedData[formattedData.length - 1].blockNumber;
+
+      return {
+        pagination: {
+          nextCursor,
+          take,
+        },
+        data: formattedData,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new Error(`Failed to fetch blocks: ${error.message}`);
+    }
   }
 
   async getTransfersEventByTxHashOrAddress(
