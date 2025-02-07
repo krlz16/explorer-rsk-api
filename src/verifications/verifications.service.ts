@@ -3,7 +3,7 @@ import { EVM_VERSIONS } from 'src/constants/evm.constants';
 import { PrismaService } from 'src/prisma.service';
 import { VerifyRequestDto } from './verify-request.dto';
 import { Multer } from 'multer';
-import { isAddress } from '@rsksmart/rsk-utils';
+import { config } from 'src/common/constants/config';
 
 @Injectable()
 export class VerificationsService {
@@ -19,10 +19,7 @@ export class VerificationsService {
       if (!dataParsed.address) {
         throw new BadRequestException('Address is required');
       }
-      if (
-        !isAddress(dataParsed.address) ||
-        !/^0x[a-fA-F0-9]{40}$/.test(dataParsed.address)
-      ) {
+      if (!/^0x[a-fA-F0-9]{40}$/.test(dataParsed.address)) {
         throw new BadRequestException(`Invalid address: ${dataParsed.address}`);
       }
       if (!dataParsed.version) {
@@ -71,7 +68,7 @@ export class VerificationsService {
       }
 
       const response = await fetch(
-        `${process.env.VERIFIER_URL}/api/verifier/verify`,
+        `${config.verifier_url}/api/verifier/verify`,
         {
           method: 'POST',
           body: formData,
