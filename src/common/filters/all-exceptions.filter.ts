@@ -17,15 +17,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const status =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+    let status = HttpStatus.INTERNAL_SERVER_ERROR;
+    let message = 'Internal server error';
 
-    const message =
-      exception instanceof HttpException
-        ? exception.getResponse()
-        : 'Internal server error';
+    if (exception instanceof HttpException) {
+      status = exception.getStatus();
+      const responseMessage = exception.getResponse();
+
+      message =
+        typeof responseMessage === 'string'
+          ? responseMessage
+          : (responseMessage as any).message || JSON.stringify(responseMessage);
+    }
 
     const stack = exception instanceof Error ? exception.stack : '';
     const serviceName = stack
@@ -33,7 +36,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       : 'UnknownService';
 
     this.logger.error(
-      `[${serviceName}] Error ${status}: ${JSON.stringify(message)} (URL: ${request.url})`,
+      `[${serviceName}] Error ${status}: ${message} (URL: ${request.url})`,
       stack,
     );
 

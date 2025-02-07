@@ -1,4 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { BlockParserService } from 'src/common/parsers/block-parser.service';
 import { block } from '@prisma/client';
@@ -22,7 +27,7 @@ export class BlocksService {
   async getBlocks(take: number = TAKE_PAGE_DATA, cursor?: number) {
     try {
       if (!Number.isInteger(take) || take < 1) {
-        throw new Error(
+        throw new BadRequestException(
           `Invalid "take" value: ${take}. Must be a positive integer.`,
         );
       }
@@ -68,6 +73,9 @@ export class BlocksService {
         data: formattedBlocks,
       };
     } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
       throw new Error(`Failed to fetch blocks: ${error.message}`);
     }
   }
@@ -81,18 +89,24 @@ export class BlocksService {
     try {
       if (typeof block === 'number') {
         if (!Number.isInteger(block) || block < 0) {
-          throw new Error(
+          throw new BadRequestException(
             `Invalid block number: ${block}. Must be a non-negative integer.`,
+          );
+        }
+
+        if (block > 2147483647) {
+          throw new BadRequestException(
+            `Block number ${block} exceeds the allowed limit of 2,147,483,647.`,
           );
         }
       } else if (typeof block === 'string') {
         if (!/^0x[a-fA-F0-9]{64}$/.test(block)) {
-          throw new Error(
+          throw new BadRequestException(
             `Invalid block hash format: ${block}. Must be a 64-character hex string.`,
           );
         }
       } else {
-        throw new Error(
+        throw new BadRequestException(
           `Invalid block identifier: ${block}. Must be a number or a hash.`,
         );
       }
@@ -102,7 +116,7 @@ export class BlocksService {
       });
 
       if (!blockResponse) {
-        throw new Error(`Block not found: ${block}`);
+        return { data: null };
       }
 
       const prevBlock = await this.prisma.block.findFirst({
@@ -126,6 +140,19 @@ export class BlocksService {
         navigation,
       };
     } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+
+      if (error.code === 'P2023') {
+        throw new BadRequestException(
+          `Invalid query parameter for block: ${block}`,
+        );
+      }
+
       throw new Error(`Failed to fetch block: ${error.message}`);
     }
   }
