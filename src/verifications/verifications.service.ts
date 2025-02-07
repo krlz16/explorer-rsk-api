@@ -21,7 +21,7 @@ export class VerificationsService {
       }
       if (
         !isAddress(dataParsed.address) ||
-        !dataParsed.address.includes('0x')
+        !/^0x[a-fA-F0-9]{40}$/.test(dataParsed.address)
       ) {
         throw new BadRequestException(`Invalid address: ${dataParsed.address}`);
       }
