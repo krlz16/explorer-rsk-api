@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma, event } from '@prisma/client';
-import { isAddress } from '@rsksmart/rsk-utils';
 import BigNumber from 'bignumber.js';
+import { TAKE_PAGE_DATA } from 'src/common/constants';
 import { PaginationService } from 'src/common/pagination/pagination.service';
 import { PrismaService } from 'src/prisma.service';
 
@@ -25,7 +25,9 @@ export class EventsService {
           `Invalid "take" value: ${take}. Must be a positive integer.`,
         );
       }
-
+      if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+        throw new BadRequestException(`Invalid address: ${address}`);
+      }
       const where = {
         address_in_event: {
           some: { address },
@@ -45,7 +47,7 @@ export class EventsService {
           },
         },
         orderBy: {
-          eventId: 'desc',
+          blockNumber: 'desc',
         },
       });
 
@@ -83,51 +85,94 @@ export class EventsService {
     }
   }
 
+  /**
+   * Fetch transfer events by specific tx hash or address.
+   * @param {string} addressOrhash - Transaction hash or address.
+   * @param {number} take - Number of records to retrieve.
+   * @param {number} cursor - The block number to start from (optional).
+   * @returns Event details.
+   */
   async getTransfersEventByTxHashOrAddress(
     addressOrhash: string,
-    page_data: number,
-    take_data: number,
+    take: number = TAKE_PAGE_DATA,
+    cursor?: number,
   ) {
-    const isOneAddress = isAddress(addressOrhash);
+    try {
+      if (!Number.isInteger(take) || take < 1) {
+        throw new BadRequestException(
+          `Invalid "take" value: ${take}. Must be a positive integer.`,
+        );
+      }
 
-    const where = {
-      event: {
-        equals: 'Transfer',
-        mode: 'insensitive' as Prisma.QueryMode,
-      },
-      [isOneAddress ? 'address' : 'transactionHash']: addressOrhash,
-    };
+      const isOneAddress = /^0x[a-fA-F0-9]{40}$/.test(addressOrhash);
+      const isHash = /^0x[a-fA-F0-9]{64}$/.test(addressOrhash);
+      if (!isOneAddress && !isHash) {
+        throw new BadRequestException(
+          `Invalid address or hash: ${addressOrhash}`,
+        );
+      }
+      const where = {
+        event: {
+          equals: 'Transfer',
+          mode: 'insensitive' as Prisma.QueryMode,
+        },
+        [isOneAddress ? 'address' : 'transactionHash']: addressOrhash,
+        ...(cursor ? { blockNumber: { lt: cursor } } : {}),
+      };
 
-    const count = await this.prisma.event.count({ where });
-
-    const pagination = this.pgService.paginate({
-      page_data,
-      take_data,
-      count,
-    });
-    const response = await this.prisma.event.findMany({
-      where,
-      include: {
-        address_event_addressToaddress: {
-          select: {
-            name: true,
-            contract_contract_addressToaddress: {
-              select: {
-                symbol: true,
+      const response = await this.prisma.event.findMany({
+        take,
+        where,
+        include: {
+          address_event_addressToaddress: {
+            select: {
+              name: true,
+              contract_contract_addressToaddress: {
+                select: {
+                  symbol: true,
+                },
               },
             },
           },
         },
-      },
-    });
+        orderBy: {
+          blockNumber: 'desc',
+        },
+      });
 
-    const formattedData = this.formatEvent(response);
-    return {
-      pagination,
-      data: formattedData,
-    };
+      if (response.length <= 0 || !response) {
+        return {
+          pagination: {
+            nextCursor: null,
+            take,
+          },
+          data: [],
+        };
+      }
+
+      const formattedData = this.formatEvent(response);
+      const nextCursor = formattedData[formattedData.length - 1].blockNumber;
+
+      return {
+        pagination: {
+          nextCursor,
+          take,
+        },
+        data: formattedData,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new Error(`Failed to fetch blocks: ${error.message}`);
+    }
   }
 
+  /**
+   * Format event data.
+   * @param {event[]} events - Event data to format.
+   * @returns Formatted event data.
+   */
   formatEvent(events: event[] | unknown[]) {
     const formattedData = events.map((e) => {
       e.timestamp = e.timestamp.toString() as unknown as bigint;
@@ -151,7 +196,6 @@ export class EventsService {
         contrant_detail,
       };
     });
-
     return formattedData;
   }
 }

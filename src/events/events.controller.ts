@@ -11,7 +11,7 @@ export class EventsController {
    * @param {string} address - The address to filter events by.
    * @param {number} take - Number of records to retrieve.
    * @param {number} cursor - The block number to start from (optional).
-   * @returns
+   * @returns Paginated events data.
    */
   @Get('/address/:address')
   getEventsByAddress(
@@ -23,29 +23,24 @@ export class EventsController {
     return this.eventsService.getEventsByAddress(address, takeData, cursor);
   }
 
-  @Get('/tx/:hash')
+  /**
+   * Fetch transfer events by speficit tx hash or address.
+   * @param {string} addressOrhash - Transaction hash.
+   * @param take
+   * @param cursor
+   * @returns Event details.
+   */
+  @Get('/tx/:addressOrhash')
   getEventByTxHash(
-    @Param('hash') hash: string,
-    @Param('page_data') page_data: number,
-    @Param('take_data') take_data: number,
+    @Param('addressOrhash') addressOrhash: string,
+    @Query('take') take?: number,
+    @Query('cursor') cursor?: number,
   ) {
+    const takeData = take || TAKE_PAGE_DATA;
     return this.eventsService.getTransfersEventByTxHashOrAddress(
-      hash,
-      page_data,
-      take_data,
-    );
-  }
-
-  @Get('/transfer/:address')
-  getTransfersEventByAddress(
-    @Param('address') address: string,
-    @Param('page_data') page_data: number,
-    @Param('take_data') take_data: number,
-  ) {
-    return this.eventsService.getTransfersEventByTxHashOrAddress(
-      address,
-      page_data,
-      take_data,
+      addressOrhash,
+      takeData,
+      cursor,
     );
   }
 }
