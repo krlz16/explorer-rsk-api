@@ -33,7 +33,7 @@ export class BlocksService {
       }
 
       const blocks = await this.prisma.block.findMany({
-        take,
+        take: take + 1,
         ...(cursor ? { where: { number: { lt: cursor } } } : {}),
         orderBy: { number: 'desc' },
         select: {
@@ -52,8 +52,9 @@ export class BlocksService {
 
       if (blocks.length === 0) {
         return {
-          pagination: {
+          paginationBlocks: {
             nextCursor: null,
+            prevCursor: cursor || null,
             take,
           },
           data: [],
@@ -62,12 +63,13 @@ export class BlocksService {
 
       const formattedBlocks = this.blockParser.formatBlock(blocks as block[]);
 
-      const nextCursor =
-        formattedBlocks[formattedBlocks.length - 1].number || null;
+      const nextCursor = formattedBlocks[formattedBlocks.length - 1].number;
+      const prevCursor = formattedBlocks[0].number + take - 1;
 
       return {
-        pagination: {
-          nextCursor,
+        paginationBlocks: {
+          nextCursor: nextCursor || null,
+          prevCursor: prevCursor || null,
           take,
         },
         data: formattedBlocks,

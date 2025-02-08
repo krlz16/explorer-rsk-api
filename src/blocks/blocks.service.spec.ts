@@ -42,7 +42,7 @@ describe('BlocksService', () => {
   });
 
   // ✅ TEST: getBlocks() should return paginated blocks
-  it('should return paginated blocks with a next cursor', async () => {
+  it('should return paginated blocks with a next and prev cursor', async () => {
     const mockBlocks = [
       {
         id: '1',
@@ -81,12 +81,12 @@ describe('BlocksService', () => {
     const result = await service.getBlocks(2);
 
     expect(result).toEqual({
-      pagination: { nextCursor: 99, take: 2 },
+      paginationBlocks: { nextCursor: 99, prevCursor: 101, take: 2 },
       data: formattedBlocks,
     });
 
     expect(prismaMock.block.findMany).toHaveBeenCalledWith({
-      take: 2,
+      take: 3,
       orderBy: { number: 'desc' },
       select: expect.any(Object),
     });
@@ -100,12 +100,12 @@ describe('BlocksService', () => {
     const result = await service.getBlocks(2);
 
     expect(result).toEqual({
-      pagination: { nextCursor: null, take: 2 },
+      paginationBlocks: { nextCursor: null, prevCursor: null, take: 2 },
       data: [],
     });
 
     expect(prismaMock.block.findMany).toHaveBeenCalledWith({
-      take: 2,
+      take: 3,
       orderBy: { number: 'desc' },
       select: expect.any(Object),
     });
@@ -215,10 +215,14 @@ describe('BlocksService', () => {
     expect(prismaMock.block.findFirst).toHaveBeenCalledTimes(2);
   });
 
-  it('should throw an error if the block is not found', async () => {
+  it('should return null if the block is not found', async () => {
     (prismaMock.block.findFirst as jest.Mock).mockResolvedValue(null);
 
-    await expect(service.getBlock(100)).rejects.toThrow('Block not found: 100');
+    const result = await service.getBlock(10);
+
+    expect(result).toEqual({
+      data: null,
+    });
 
     expect(prismaMock.block.findFirst).toHaveBeenCalledTimes(1);
   });
