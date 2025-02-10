@@ -10,14 +10,14 @@ export class EventsController {
    * Fetch a paginated list of events using keyset pagination.
    * @param {string} address - The address to filter events by.
    * @param {number} take - Number of records to retrieve.
-   * @param {number} cursor - The block number to start from (optional).
+   * @param {string} cursor - The eventID to start from (optional).
    * @returns Paginated events data.
    */
   @Get('/address/:address')
   getEventsByAddress(
     @Param('address') address: string,
     @Query('take') take?: number,
-    @Query('cursor') cursor?: number,
+    @Query('cursor') cursor?: string,
   ) {
     const takeData = take || TAKE_PAGE_DATA;
     return this.eventsService.getEventsByAddress(address, takeData, cursor);
@@ -26,8 +26,8 @@ export class EventsController {
   /**
    * Fetch transfer events by speficit tx hash or address.
    * @param {string} addressOrhash - Transaction hash.
-   * @param take
-   * @param cursor
+   * @param take - Number of records to retrieve.
+   * @param cursor - The block number to start from (optional).
    * @returns Event details.
    */
   @Get('/tx/:addressOrhash')

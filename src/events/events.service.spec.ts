@@ -165,7 +165,7 @@ describe('EventsService', () => {
     const result = await service.getEventsByAddress(
       '0x6306395B37120b1114EF08ee160f7C2f3a263558',
       2,
-      51,
+      '05c74750000031fb80a3929ec882e337',
     );
 
     expect(result.pagination).toEqual({ nextCursor: 49, take: 2 });

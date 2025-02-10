@@ -15,14 +15,14 @@ export class EventsService {
    * Fetch paginated events per address using keyset pagination.
    * @param {string} address - The address to filter events by.
    * @param {number} take - Number of records to retrieve.
-   * @param {number} cursor - The block number to start from (optional).
-   * @returns Paginated events by address data.
+   * @param {string} cursor - The eventID to start from (optional).
+   * @returns Paginated events by address data & pagination.
    */
-  async getEventsByAddress(address: string, take: number, cursor?: number) {
+  async getEventsByAddress(address: string, take: number, cursor?: string) {
     try {
-      if (!Number.isInteger(take) || take < 1) {
+      if (!Number.isInteger(take) || take === 0) {
         throw new BadRequestException(
-          `Invalid "take" value: ${take}. Must be a positive integer.`,
+          `Invalid "take" value: ${take}. Must be a non zero number.`,
         );
       }
       if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
@@ -32,11 +32,11 @@ export class EventsService {
         address_in_event: {
           some: { address },
         },
-        ...(cursor ? { blockNumber: { lt: cursor } } : {}),
       };
 
       const response = await this.prisma.event.findMany({
         take,
+        ...(cursor ? { cursor: { eventId: cursor }, skip: 1 } : {}),
         where,
         include: {
           address_in_event: {
@@ -47,7 +47,7 @@ export class EventsService {
           },
         },
         orderBy: {
-          blockNumber: 'desc',
+          eventId: 'desc',
         },
       });
 
@@ -68,12 +68,17 @@ export class EventsService {
         return e;
       });
 
-      const nextCursor = formattedData[formattedData.length - 1].blockNumber;
+      const nextCursor =
+        formattedData[formattedData.length - 1].eventId || null;
+      const prevCursor = formattedData[0].eventId || null;
+      const hasMore = formattedData.length === Math.abs(take);
 
       return {
-        pagination: {
+        paginationEvents: {
           nextCursor,
+          prevCursor,
           take,
+          hasMore,
         },
         data: formattedData,
       };
@@ -81,7 +86,7 @@ export class EventsService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new Error(`Failed to fetch blocks: ${error.message}`);
+      throw new Error(`Failed to fetch events: ${error.message}`);
     }
   }
 
@@ -164,7 +169,7 @@ export class EventsService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new Error(`Failed to fetch blocks: ${error.message}`);
+      throw new Error(`Failed to fetch events: ${error.message}`);
     }
   }
 
