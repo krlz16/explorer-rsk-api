@@ -74,7 +74,7 @@ describe('AddressesService', () => {
       expect(result).toEqual({
         pagination: {
           nextCursor: null,
-          prevCursor: 2,
+          prevCursor: 10,
           hasMoreData: false,
           take: 10,
         },
@@ -133,8 +133,8 @@ describe('AddressesService', () => {
 
       expect(result).toEqual({
         pagination: {
-          nextCursor: null,
-          prevCursor: 10,
+          nextCursor: 8,
+          prevCursor: null,
           hasMoreData: false,
           take: -5,
         },

@@ -72,11 +72,12 @@ export class AddressesService {
         this.addressParser.formatAddresses(paginatedAddresses);
 
       const nextCursor =
-        hasMoreData && take > 0
+        take < 0 || hasMoreData
           ? formattedAddresses[formattedAddresses.length - 1]?.id
           : null;
+
       const prevCursor =
-        hasMoreData && take < 0 ? formattedAddresses[0]?.id : cursor || null;
+        cursor && (take > 0 || hasMoreData) ? formattedAddresses[0]?.id : null;
 
       return {
         pagination: {
