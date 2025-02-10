@@ -55,7 +55,9 @@ export class EventsService {
         return {
           pagination: {
             nextCursor: null,
+            prevCursor: cursor || null,
             take,
+            hasMore: false,
           },
           data: [],
         };
@@ -94,16 +96,16 @@ export class EventsService {
    * Fetch transfer events by specific tx hash or address.
    * @param {string} addressOrhash - Transaction hash or address.
    * @param {number} take - Number of records to retrieve.
-   * @param {number} cursor - The block number to start from (optional).
+   * @param {string} cursor - The eventID to start from (optional).
    * @returns Event details.
    */
   async getTransfersEventByTxHashOrAddress(
     addressOrhash: string,
     take: number = TAKE_PAGE_DATA,
-    cursor?: number,
+    cursor?: string,
   ) {
     try {
-      if (!Number.isInteger(take) || take < 1) {
+      if (!Number.isInteger(take) || take === 0) {
         throw new BadRequestException(
           `Invalid "take" value: ${take}. Must be a positive integer.`,
         );
@@ -122,11 +124,11 @@ export class EventsService {
           mode: 'insensitive' as Prisma.QueryMode,
         },
         [isOneAddress ? 'address' : 'transactionHash']: addressOrhash,
-        ...(cursor ? { blockNumber: { lt: cursor } } : {}),
       };
 
       const response = await this.prisma.event.findMany({
         take,
+        ...(cursor ? { cursor: { eventId: cursor }, skip: 1 } : {}),
         where,
         include: {
           address_event_addressToaddress: {
@@ -141,7 +143,7 @@ export class EventsService {
           },
         },
         orderBy: {
-          blockNumber: 'desc',
+          eventId: 'desc',
         },
       });
 
@@ -149,19 +151,26 @@ export class EventsService {
         return {
           pagination: {
             nextCursor: null,
+            prevCursor: cursor || null,
             take,
+            hasMore: false,
           },
           data: [],
         };
       }
 
       const formattedData = this.formatEvent(response);
-      const nextCursor = formattedData[formattedData.length - 1].blockNumber;
+      const nextCursor = formattedData[formattedData.length - 1].eventId;
+      const prevCursor = formattedData[0].eventId;
+
+      const hasMore = formattedData.length === Math.abs(take);
 
       return {
         pagination: {
           nextCursor,
           take,
+          prevCursor,
+          hasMore,
         },
         data: formattedData,
       };
