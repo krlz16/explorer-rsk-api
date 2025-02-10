@@ -73,41 +73,80 @@ describe('AddressesService', () => {
 
       expect(result).toEqual({
         pagination: {
-          nextCursor: 9,
+          nextCursor: null,
+          prevCursor: 2,
+          hasMoreData: false,
           take: 10,
         },
         data: formattedAddresses,
       });
 
       expect(prisma.address.findMany).toHaveBeenCalledWith({
-        take: 10,
-        where: { id: { lt: 2 } },
+        take: 11,
+        skip: 1,
+        cursor: { id: 2 },
         include: expect.any(Object),
         orderBy: { id: 'desc' },
       });
-    });
-
-    it('should throw BadRequestException for invalid "take" parameter', async () => {
-      await expect(service.getAddresses(-5, null)).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.getAddresses(0, null)).rejects.toThrow(
-        BadRequestException,
-      );
     });
 
     it('should return an empty response when no addresses are found', async () => {
       jest.spyOn(prisma.address, 'findMany').mockResolvedValue([]);
       jest.spyOn(addressParser, 'formatAddresses').mockReturnValue([]);
 
-      const result = await service.getAddresses(5, null);
+      const result = await service.getAddresses(5, undefined);
 
       expect(result).toEqual({
         pagination: {
           nextCursor: null,
+          prevCursor: null,
           take: 5,
         },
         data: [],
+      });
+    });
+
+    it('should throw BadRequestException when trying to paginate backward without a cursor', async () => {
+      await expect(service.getAddresses(-5, undefined)).rejects.toThrow(
+        'Cannot paginate backward without a cursor.',
+      );
+    });
+
+    it('should return paginated addresses when paginating backward with a cursor', async () => {
+      const mockAddresses = [
+        {
+          id: 8,
+          address: '0x789',
+          isNative: false,
+          type: 'account',
+          name: 'Backward Account',
+        },
+      ];
+      const formattedAddresses = [{ id: 8, address: '0x789' }];
+
+      jest.spyOn(prisma.address, 'findMany').mockResolvedValue(mockAddresses);
+      jest
+        .spyOn(addressParser, 'formatAddresses')
+        .mockReturnValue(formattedAddresses);
+
+      const result = await service.getAddresses(-5, 10);
+
+      expect(result).toEqual({
+        pagination: {
+          nextCursor: null,
+          prevCursor: 10,
+          hasMoreData: false,
+          take: -5,
+        },
+        data: formattedAddresses,
+      });
+
+      expect(prisma.address.findMany).toHaveBeenCalledWith({
+        take: -6, // take - 1 for pagination
+        cursor: { id: 10 },
+        skip: 1,
+        include: expect.any(Object),
+        orderBy: { id: 'desc' },
       });
     });
   });
