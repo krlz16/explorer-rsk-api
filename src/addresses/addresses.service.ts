@@ -21,20 +21,25 @@ export class AddressesService {
    * Fetches a paginated list of addresses using keyset pagination.
    *
    * @param {number | null} cursor - The ID to start from (optional).
-   * @param {number} take - Number of records per page.
+   * @param {number} take - Number of records per page. Negative values return the previous page.
    * @returns {Promise<{ pagination: any, data: any }>} - Paginated list of addresses.
    */
   async getAddresses(take: number = TAKE_PAGE_DATA, cursor?: number) {
     try {
-      if (!Number.isInteger(take) || take < 1) {
+      if (cursor !== undefined && !Number.isInteger(cursor)) {
+        throw new BadRequestException(`Invalid cursor value: ${cursor}`);
+      }
+
+      if (take < 0 && !cursor) {
         throw new BadRequestException(
-          `Invalid "take" value: ${take}. Must be a positive integer.`,
+          'Cannot paginate backward without a cursor.',
         );
       }
 
       const addresses = await this.prisma.address.findMany({
-        take,
-        ...(cursor ? { where: { id: { lt: cursor } } } : {}),
+        take: take > 0 ? take + 1 : take - 1,
+        cursor: cursor ? { id: cursor } : undefined,
+        skip: cursor ? 1 : undefined,
         include: {
           address_latest_balance_address_latest_balance_addressToaddress: {
             select: {
@@ -50,19 +55,34 @@ export class AddressesService {
         return {
           pagination: {
             nextCursor: null,
+            prevCursor: null,
             take,
           },
           data: [],
         };
       }
 
-      const formattedAddresses = this.addressParser.formatAddresses(addresses);
+      const hasMoreData = addresses.length > Math.abs(take);
+
+      const paginatedAddresses = hasMoreData
+        ? addresses.slice(0, Math.abs(take))
+        : addresses;
+
+      const formattedAddresses =
+        this.addressParser.formatAddresses(paginatedAddresses);
+
       const nextCursor =
-        formattedAddresses[formattedAddresses.length - 1].id || null;
+        hasMoreData && take > 0
+          ? formattedAddresses[formattedAddresses.length - 1]?.id
+          : null;
+      const prevCursor =
+        hasMoreData && take < 0 ? formattedAddresses[0]?.id : cursor || null;
 
       return {
         pagination: {
           nextCursor,
+          prevCursor,
+          hasMoreData,
           take,
         },
         data: formattedAddresses,
