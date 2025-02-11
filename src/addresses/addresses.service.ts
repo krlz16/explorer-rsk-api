@@ -26,8 +26,24 @@ export class AddressesService {
    */
   async getAddresses(take: number = TAKE_PAGE_DATA, cursor?: number) {
     try {
-      if (cursor !== undefined && !Number.isInteger(cursor)) {
-        throw new BadRequestException(`Invalid cursor value: ${cursor}`);
+      if (take > TAKE_PAGE_DATA) {
+        throw new BadRequestException(
+          `Cannot fetch more than ${TAKE_PAGE_DATA} addresses at a time. Requested: ${take}`,
+        );
+      }
+
+      if (cursor !== undefined) {
+        if (!Number.isInteger(cursor)) {
+          throw new BadRequestException(
+            `Cursor must be an integer. Received: ${cursor}`,
+          );
+        }
+
+        if (cursor < 0) {
+          throw new BadRequestException(
+            `Cursor must be a non-negative integer. Received: ${cursor}`,
+          );
+        }
       }
 
       if (take < 0 && !cursor) {
