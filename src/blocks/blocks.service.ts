@@ -26,15 +26,20 @@ export class BlocksService {
    */
   async getBlocks(take: number = TAKE_PAGE_DATA, cursor?: number) {
     try {
-      if (!Number.isInteger(take) || take < 1) {
+      if (cursor !== undefined && !Number.isInteger(cursor)) {
+        throw new BadRequestException(`Invalid cursor value: ${cursor}`);
+      }
+
+      if (take < 0 && !cursor) {
         throw new BadRequestException(
-          `Invalid "take" value: ${take}. Must be a positive integer.`,
+          'Cannot paginate backward without a cursor.',
         );
       }
 
       const blocks = await this.prisma.block.findMany({
-        take: take + 1,
-        ...(cursor ? { where: { number: { lt: cursor } } } : {}),
+        take: take > 0 ? take + 1 : take - 1,
+        cursor: cursor ? { number: cursor } : undefined,
+        skip: cursor ? 1 : undefined,
         orderBy: { number: 'desc' },
         select: {
           id: true,
@@ -61,15 +66,28 @@ export class BlocksService {
         };
       }
 
-      const formattedBlocks = this.blockParser.formatBlock(blocks as block[]);
+      const hasMoreData = blocks.length > Math.abs(take);
 
-      const nextCursor = formattedBlocks[formattedBlocks.length - 1].number;
-      const prevCursor = formattedBlocks[0].number + take - 1;
+      const paginatedBlocks = hasMoreData
+        ? blocks.slice(0, Math.abs(take) + 1)
+        : blocks;
+
+      const formattedBlocks = this.blockParser.formatBlock(
+        paginatedBlocks as block[],
+      );
+
+      const nextCursor =
+        hasMoreData && take > 0
+          ? formattedBlocks[formattedBlocks.length - 1]?.number
+          : null;
+      const prevCursor =
+        hasMoreData && take < 0 ? formattedBlocks[0]?.number : cursor || null;
 
       return {
         paginationBlocks: {
-          nextCursor: nextCursor || null,
-          prevCursor: prevCursor || null,
+          nextCursor,
+          prevCursor,
+          hasMoreData,
           take,
         },
         data: formattedBlocks,

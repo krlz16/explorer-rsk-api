@@ -68,25 +68,84 @@ describe('BlocksService', () => {
         uncles: '[]',
         transactions: '[]',
       },
+      {
+        id: '3',
+        number: 98,
+        hash: '0xdef',
+        miner: '0xminer',
+        size: 1500,
+        timestamp: 1234567870,
+        difficulty: '0x1',
+        totalDifficulty: '0x2',
+        uncles: '[]',
+        transactions: '[]',
+      },
+      {
+        id: '4',
+        number: 97,
+        hash: '0xdef',
+        miner: '0xminer',
+        size: 1500,
+        timestamp: 1234567860,
+        difficulty: '0x1',
+        totalDifficulty: '0x2',
+        uncles: '[]',
+        transactions: '[]',
+      },
+      {
+        id: '5',
+        number: 96,
+        hash: '0xdef',
+        miner: '0xminer',
+        size: 1500,
+        timestamp: 1234567850,
+        difficulty: '0x1',
+        totalDifficulty: '0x2',
+        uncles: '[]',
+        transactions: '[]',
+      },
+      {
+        id: '6',
+        number: 95,
+        hash: '0xdef',
+        miner: '0xminer',
+        size: 1500,
+        timestamp: 1234567840,
+        difficulty: '0x1',
+        totalDifficulty: '0x2',
+        uncles: '[]',
+        transactions: '[]',
+      },
     ];
 
     const formattedBlocks = [
       { id: '1', number: 100, hash: '0xabc' },
       { id: '2', number: 99, hash: '0xdef' },
+      { id: '3', number: 98, hash: '0xdef' },
+      { id: '4', number: 97, hash: '0xdef' },
+      { id: '5', number: 96, hash: '0xdef' },
+      { id: '6', number: 95, hash: '0xdef' },
     ];
 
     (prismaMock.block.findMany as jest.Mock).mockResolvedValue(mockBlocks);
     (blockParserMock.formatBlock as jest.Mock).mockReturnValue(formattedBlocks);
 
-    const result = await service.getBlocks(2);
+    const result = await service.getBlocks(2, 98);
 
     expect(result).toEqual({
-      paginationBlocks: { nextCursor: 99, prevCursor: 101, take: 2 },
+      paginationBlocks: {
+        nextCursor: 95,
+        prevCursor: 98,
+        take: 2,
+        hasMoreData: true,
+      },
       data: formattedBlocks,
     });
 
     expect(prismaMock.block.findMany).toHaveBeenCalledWith({
       take: 3,
+      cursor: { number: 98 },
+      skip: 1,
       orderBy: { number: 'desc' },
       select: expect.any(Object),
     });
@@ -111,10 +170,10 @@ describe('BlocksService', () => {
     });
   });
 
-  // ✅ TEST: getBlocks() should throw an error for invalid take values
+  // ✅ TEST: getBlocks() should throw an error for negative take values without a cursor
   it('should throw an error for invalid take values', async () => {
     await expect(service.getBlocks(-1)).rejects.toThrow(
-      'Invalid "take" value: -1. Must be a positive integer.',
+      'Cannot paginate backward without a cursor.',
     );
   });
 
