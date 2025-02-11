@@ -111,14 +111,16 @@ export class VerificationsService {
       throw new Error(`Error on contract verification: ${error.message}`);
     }
   }
-  private async checkResult({ bytecodeHash, resultBytecodeHash }) {
+  private async checkResult({
+    bytecodeHash,
+    resultBytecodeHash,
+  }): Promise<boolean> {
     try {
-      if (!bytecodeHash || bytecodeHash.length !== 66)
-        throw new Error('Invalid bytecodeHash');
-      if (!resultBytecodeHash) throw new Error('resultBytecodeHash is empty');
+      if (!bytecodeHash || bytecodeHash.length !== 66) return false;
+      if (!resultBytecodeHash) return false;
       return resultBytecodeHash === bytecodeHash;
     } catch (err) {
-      throw new Error('error checking result: ' + err);
+      return false;
     }
   }
   private isValidVersion(version: string): boolean {

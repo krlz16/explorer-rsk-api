@@ -120,7 +120,16 @@ export class AddressParserService {
   }
 
   formatContractFiles(sources: string | any) {
-    const data = sources[0]?.contents;
+    let data: any;
+    for (const key in sources) {
+      if (Object.prototype.hasOwnProperty.call(sources, key)) {
+        const element = sources[key];
+        if (element.contents) {
+          data = element.contents;
+          break;
+        }
+      }
+    }
     const fileRegex = /\/\/ File\s+(.*?)\n([\s\S]*?)(?=\/\/ File|$)/g;
     const resources: { file: string; content: string }[] = [];
     let match: RegExpExecArray | null;
