@@ -26,8 +26,24 @@ export class BlocksService {
    */
   async getBlocks(take: number = TAKE_PAGE_DATA, cursor?: number) {
     try {
-      if (cursor !== undefined && !Number.isInteger(cursor)) {
-        throw new BadRequestException(`Invalid cursor value: ${cursor}`);
+      if (take > TAKE_PAGE_DATA) {
+        throw new BadRequestException(
+          `Cannot fetch more than ${TAKE_PAGE_DATA} blocks at a time. Requested: ${take}`,
+        );
+      }
+
+      if (cursor !== undefined) {
+        if (!Number.isInteger(cursor)) {
+          throw new BadRequestException(
+            `Cursor must be an integer. Received: ${cursor}`,
+          );
+        }
+
+        if (cursor < 0) {
+          throw new BadRequestException(
+            `Cursor must be a non-negative integer. Received: ${cursor}`,
+          );
+        }
       }
 
       if (take < 0 && !cursor) {
@@ -77,11 +93,14 @@ export class BlocksService {
       );
 
       const nextCursor =
-        hasMoreData && take > 0
-          ? formattedBlocks[formattedBlocks.length - 1]?.number
-          : null;
+        take > 0 && !hasMoreData
+          ? null
+          : formattedBlocks[formattedBlocks.length - 1]?.number;
+
       const prevCursor =
-        hasMoreData && take < 0 ? formattedBlocks[0]?.number : cursor || null;
+        !cursor || (take < 0 && !hasMoreData)
+          ? null
+          : formattedBlocks[0]?.number;
 
       return {
         paginationBlocks: {

@@ -135,7 +135,7 @@ describe('BlocksService', () => {
     expect(result).toEqual({
       paginationBlocks: {
         nextCursor: 95,
-        prevCursor: 98,
+        prevCursor: 100,
         take: 2,
         hasMoreData: true,
       },
