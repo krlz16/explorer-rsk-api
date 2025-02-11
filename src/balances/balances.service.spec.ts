@@ -69,6 +69,25 @@ describe('BalancesService', () => {
     });
   });
 
+  it('should return empty response when no balances exist', async () => {
+    (prismaMock.balance.findMany as jest.Mock).mockResolvedValue([]);
+
+    const result = await service.getBalanceByAddress(
+      '0x6306395B37120b1114EF08ee160f7C2f3a263558',
+      2,
+    );
+
+    expect(result).toEqual({
+      paginationBalances: {
+        nextCursor: null,
+        prevCursor: null,
+        take: 2,
+        hasMore: false,
+      },
+      data: [],
+    });
+  });
+
   it('should throw an error if the address is invalid', async () => {
     const invalidAddresses = [
       '0x1234567890abcdef1234567890abcdef1234567',
