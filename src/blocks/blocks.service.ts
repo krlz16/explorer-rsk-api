@@ -26,15 +26,36 @@ export class BlocksService {
    */
   async getBlocks(take: number = TAKE_PAGE_DATA, cursor?: number) {
     try {
-      if (!Number.isInteger(take) || take < 1) {
+      if (take > TAKE_PAGE_DATA) {
         throw new BadRequestException(
-          `Invalid "take" value: ${take}. Must be a positive integer.`,
+          `Cannot fetch more than ${TAKE_PAGE_DATA} blocks at a time. Requested: ${take}`,
+        );
+      }
+
+      if (cursor !== undefined) {
+        if (!Number.isInteger(cursor)) {
+          throw new BadRequestException(
+            `Cursor must be an integer. Received: ${cursor}`,
+          );
+        }
+
+        if (cursor < 0) {
+          throw new BadRequestException(
+            `Cursor must be a non-negative integer. Received: ${cursor}`,
+          );
+        }
+      }
+
+      if (take < 0 && !cursor) {
+        throw new BadRequestException(
+          'Cannot paginate backward without a cursor.',
         );
       }
 
       const blocks = await this.prisma.block.findMany({
-        take: take + 1,
-        ...(cursor ? { where: { number: { lt: cursor } } } : {}),
+        take: take > 0 ? take + 1 : take - 1,
+        cursor: cursor ? { number: cursor } : undefined,
+        skip: cursor ? 1 : undefined,
         orderBy: { number: 'desc' },
         select: {
           id: true,
@@ -61,15 +82,31 @@ export class BlocksService {
         };
       }
 
-      const formattedBlocks = this.blockParser.formatBlock(blocks as block[]);
+      const hasMoreData = blocks.length > Math.abs(take);
 
-      const nextCursor = formattedBlocks[formattedBlocks.length - 1].number;
-      const prevCursor = formattedBlocks[0].number + take - 1;
+      const paginatedBlocks = hasMoreData
+        ? blocks.slice(0, Math.abs(take) + 1)
+        : blocks;
+
+      const formattedBlocks = this.blockParser.formatBlock(
+        paginatedBlocks as block[],
+      );
+
+      const nextCursor =
+        take > 0 && !hasMoreData
+          ? null
+          : formattedBlocks[formattedBlocks.length - 1]?.number;
+
+      const prevCursor =
+        !cursor || (take < 0 && !hasMoreData)
+          ? null
+          : formattedBlocks[0]?.number;
 
       return {
         paginationBlocks: {
-          nextCursor: nextCursor || null,
-          prevCursor: prevCursor || null,
+          nextCursor,
+          prevCursor,
+          hasMoreData,
           take,
         },
         data: formattedBlocks,
