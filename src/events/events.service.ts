@@ -53,7 +53,7 @@ export class EventsService {
 
       if (response.length <= 0) {
         return {
-          pagination: {
+          paginationEvents: {
             nextCursor: null,
             prevCursor: cursor || null,
             take,
@@ -149,7 +149,7 @@ export class EventsService {
 
       if (response.length <= 0 || !response) {
         return {
-          pagination: {
+          paginationEvents: {
             nextCursor: null,
             prevCursor: cursor || null,
             take,
@@ -166,7 +166,7 @@ export class EventsService {
       const hasMore = formattedData.length === Math.abs(take);
 
       return {
-        pagination: {
+        paginationEvents: {
           nextCursor,
           take,
           prevCursor,
