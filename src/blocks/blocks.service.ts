@@ -26,7 +26,7 @@ export class BlocksService {
    */
   async getBlocks(take: number = TAKE_PAGE_DATA, cursor?: number) {
     try {
-      if (take > TAKE_PAGE_DATA) {
+      if (Math.abs(take) > TAKE_PAGE_DATA) {
         throw new BadRequestException(
           `Cannot fetch more than ${TAKE_PAGE_DATA} blocks at a time. Requested: ${take}`,
         );
