@@ -133,7 +133,7 @@ describe('BlocksService', () => {
     const result = await service.getBlocks(2, 98);
 
     expect(result).toEqual({
-      paginationBlocks: {
+      paginationData: {
         nextCursor: 95,
         prevCursor: 100,
         take: 2,
@@ -159,7 +159,7 @@ describe('BlocksService', () => {
     const result = await service.getBlocks(2);
 
     expect(result).toEqual({
-      paginationBlocks: { nextCursor: null, prevCursor: null, take: 2 },
+      paginationData: { nextCursor: null, prevCursor: null, take: 2 },
       data: [],
     });
 

@@ -69,7 +69,7 @@ export class AddressesService {
 
       if (addresses.length === 0) {
         return {
-          pagination: {
+          paginationData: {
             nextCursor: null,
             prevCursor: null,
             take,
@@ -98,7 +98,7 @@ export class AddressesService {
           : formattedAddresses[0]?.id;
 
       return {
-        pagination: {
+        paginationData: {
           nextCursor,
           prevCursor,
           hasMoreData,

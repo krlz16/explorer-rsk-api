@@ -72,7 +72,7 @@ describe('AddressesService', () => {
       const result = await service.getAddresses(10, 2);
 
       expect(result).toEqual({
-        pagination: {
+        paginationData: {
           nextCursor: null,
           prevCursor: 10,
           hasMoreData: false,
@@ -97,7 +97,7 @@ describe('AddressesService', () => {
       const result = await service.getAddresses(5, undefined);
 
       expect(result).toEqual({
-        pagination: {
+        paginationData: {
           nextCursor: null,
           prevCursor: null,
           take: 5,
@@ -132,7 +132,7 @@ describe('AddressesService', () => {
       const result = await service.getAddresses(-5, 10);
 
       expect(result).toEqual({
-        pagination: {
+        paginationData: {
           nextCursor: 8,
           prevCursor: null,
           hasMoreData: false,
