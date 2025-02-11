@@ -116,21 +116,17 @@ export class TransactionsService {
       count,
     });
 
-    const data = await this.prisma.transaction.findMany({
+    const response = await this.prisma.transaction.findMany({
       take: pagination.take,
       skip: pagination.skip,
       where,
     });
 
-    const response = data.map((v) => {
-      v.timestamp = v.timestamp.toString() as unknown as bigint;
-      v.receipt = JSON.parse(v.receipt);
-      return v;
-    });
+    const txs = this.txParser.formatTxs(response);
 
     return {
       pagination,
-      data: response,
+      data: txs,
     };
   }
 
