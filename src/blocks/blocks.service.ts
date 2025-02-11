@@ -33,7 +33,7 @@ export class BlocksService {
       }
 
       const blocks = await this.prisma.block.findMany({
-        take,
+        take: take + 1,
         ...(cursor ? { where: { number: { lt: cursor } } } : {}),
         orderBy: { number: 'desc' },
         select: {
@@ -52,8 +52,9 @@ export class BlocksService {
 
       if (blocks.length === 0) {
         return {
-          pagination: {
+          paginationBlocks: {
             nextCursor: null,
+            prevCursor: cursor || null,
             take,
           },
           data: [],
@@ -62,12 +63,13 @@ export class BlocksService {
 
       const formattedBlocks = this.blockParser.formatBlock(blocks as block[]);
 
-      const nextCursor =
-        formattedBlocks[formattedBlocks.length - 1].number || null;
+      const nextCursor = formattedBlocks[formattedBlocks.length - 1].number;
+      const prevCursor = formattedBlocks[0].number + take - 1;
 
       return {
-        pagination: {
-          nextCursor,
+        paginationBlocks: {
+          nextCursor: nextCursor || null,
+          prevCursor: prevCursor || null,
           take,
         },
         data: formattedBlocks,
@@ -93,6 +95,12 @@ export class BlocksService {
             `Invalid block number: ${block}. Must be a non-negative integer.`,
           );
         }
+
+        if (block > 2147483647) {
+          throw new BadRequestException(
+            `Block number ${block} exceeds the allowed limit of 2,147,483,647.`,
+          );
+        }
       } else if (typeof block === 'string') {
         if (!/^0x[a-fA-F0-9]{64}$/.test(block)) {
           throw new BadRequestException(
@@ -110,7 +118,7 @@ export class BlocksService {
       });
 
       if (!blockResponse) {
-        throw new NotFoundException(`Block not found: ${block}`);
+        return { data: null };
       }
 
       const prevBlock = await this.prisma.block.findFirst({
@@ -140,6 +148,13 @@ export class BlocksService {
       ) {
         throw error;
       }
+
+      if (error.code === 'P2023') {
+        throw new BadRequestException(
+          `Invalid query parameter for block: ${block}`,
+        );
+      }
+
       throw new Error(`Failed to fetch block: ${error.message}`);
     }
   }

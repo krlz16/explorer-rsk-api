@@ -20,8 +20,9 @@ export class StatsService {
       },
     });
     stats.hashrate = new BigNumber(stats.hashrate)
-      .dividedBy(1e6)
-      .toNumber() as unknown as string;
+      .dividedBy(1e9)
+      .toNumber()
+      .toString();
     return {
       data: stats,
     };
