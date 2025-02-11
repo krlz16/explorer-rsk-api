@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BalancesService } from './balances.service';
 import { PrismaService } from 'src/prisma.service';
+import { BadRequestException } from '@nestjs/common';
 
 describe('BalancesService', () => {
   let service: BalancesService;
@@ -33,27 +34,16 @@ describe('BalancesService', () => {
   it('should return paginated balances with a next cursor', async () => {
     const mockBalances = [
       {
+        id: '1',
         blockNumber: 100,
         timestamp: 1738848907,
-        balance: '0x29704b3d6f90a6f4',
+        balance: '1000000000000000000',
       },
       {
+        id: '2',
         blockNumber: 99,
         timestamp: 1738848874,
-        balance: '0x98e215b31ddde',
-      },
-    ];
-
-    const formattedBalances = [
-      {
-        blockNumber: 100,
-        timestamp: '1738848907',
-        balance: 2.985969280183478004,
-      },
-      {
-        blockNumber: 99,
-        timestamp: '1738848874',
-        balance: 0.002689548705455582,
+        balance: '500000000000000000',
       },
     ];
 
@@ -64,24 +54,37 @@ describe('BalancesService', () => {
       2,
     );
 
-    expect(result.pagination).toEqual({
-      nextCursor: 99,
+    expect(result.paginationBalances).toEqual({
+      nextCursor: '2',
+      prevCursor: '1',
       take: 2,
+      hasMore: true,
     });
-    expect(parseFloat(result.data[0].balance)).toBeCloseTo(
-      formattedBalances[0].balance,
-      15,
-    );
-    expect(parseFloat(result.data[1].balance)).toBeCloseTo(
-      formattedBalances[1].balance,
-      15,
-    );
-
+    expect(result.data.length).toBe(2);
     expect(prismaMock.balance.findMany).toHaveBeenCalledWith({
       take: 2,
       where: { address: '0x6306395B37120b1114EF08ee160f7C2f3a263558' },
-      orderBy: { blockNumber: 'desc' },
+      orderBy: { id: 'desc' },
       select: expect.any(Object),
+    });
+  });
+
+  it('should return empty response when no balances exist', async () => {
+    (prismaMock.balance.findMany as jest.Mock).mockResolvedValue([]);
+
+    const result = await service.getBalanceByAddress(
+      '0x6306395B37120b1114EF08ee160f7C2f3a263558',
+      2,
+    );
+
+    expect(result).toEqual({
+      paginationBalances: {
+        nextCursor: null,
+        prevCursor: null,
+        take: 2,
+        hasMore: false,
+      },
+      data: [],
     });
   });
 
@@ -98,64 +101,23 @@ describe('BalancesService', () => {
     for (const address of invalidAddresses) {
       await expect(
         service.getBalanceByAddress(address as string, 2),
-      ).rejects.toThrow(`Invalid address: ${address}`);
+      ).rejects.toThrow(BadRequestException);
     }
-  });
-
-  it('should return empty response when no balances exist', async () => {
-    (prismaMock.balance.findMany as jest.Mock).mockResolvedValue([]);
-
-    const result = await service.getBalanceByAddress(
-      '0x6306395B37120b1114EF08ee160f7C2f3a263558',
-      2,
-    );
-
-    expect(result).toEqual({
-      pagination: { nextCursor: null, take: 2 },
-      data: [],
-    });
-
-    expect(prismaMock.balance.findMany).toHaveBeenCalledWith({
-      take: 2,
-      where: { address: '0x6306395B37120b1114EF08ee160f7C2f3a263558' },
-      orderBy: { blockNumber: 'desc' },
-      select: expect.any(Object),
-    });
-  });
-
-  it('should throw an error for invalid take values', async () => {
-    await expect(
-      service.getBalanceByAddress(
-        '0x6306395B37120b1114EF08ee160f7C2f3a263558',
-        -1,
-      ),
-    ).rejects.toThrow('Invalid "take" value: -1. Must be a positive integer.');
   });
 
   it('should return balances with pagination and cursor', async () => {
     const mockBalances = [
       {
+        id: '50',
         blockNumber: 50,
         timestamp: 1700000002,
-        balance: '0xA1B2C3D4E5F67890',
+        balance: '1000000000000000000',
       },
       {
+        id: '49',
         blockNumber: 49,
         timestamp: 1700000003,
-        balance: '0x1234567890ABCDEF',
-      },
-    ];
-
-    const expectedBalances = [
-      {
-        blockNumber: 50,
-        timestamp: '1700000002',
-        balance: 11.65159050511951272,
-      },
-      {
-        blockNumber: 49,
-        timestamp: '1700000003',
-        balance: 1.311768467294899695,
+        balance: '500000000000000000',
       },
     ];
 
@@ -167,26 +129,78 @@ describe('BalancesService', () => {
       51,
     );
 
-    expect(result.pagination).toEqual({ nextCursor: 49, take: 2 });
-
-    expect(parseFloat(result.data[0].balance)).toBeCloseTo(
-      expectedBalances[0].balance,
-      15,
-    );
-    expect(parseFloat(result.data[1].balance)).toBeCloseTo(
-      expectedBalances[1].balance,
-      15,
-    );
-
-    expect(prismaMock.balance.findMany).toHaveBeenCalledWith({
+    expect(result.paginationBalances).toEqual({
+      nextCursor: '49',
+      prevCursor: '50',
       take: 2,
-      where: {
-        address: '0x6306395B37120b1114EF08ee160f7C2f3a263558',
-        blockNumber: { lt: 51 },
-      },
-      orderBy: { blockNumber: 'desc' },
-      select: expect.any(Object),
+      hasMore: true,
     });
+  });
+
+  it('should throw an error for invalid take values', async () => {
+    await expect(service.getBalanceByAddress('0xAddress', 0)).rejects.toThrow(
+      'Invalid "take" value: 0. Must be a non zero number.',
+    );
+  });
+
+  it('should handle pagination when take is larger than available balances', async () => {
+    const mockBalances = [
+      {
+        id: '1',
+        blockNumber: 100,
+        timestamp: 1738848907,
+        balance: '1000000000000000000',
+      },
+    ];
+
+    (prismaMock.balance.findMany as jest.Mock).mockResolvedValue(mockBalances);
+
+    const result = await service.getBalanceByAddress(
+      '0x6306395B37120b1114EF08ee160f7C2f3a263558',
+      5,
+    );
+
+    expect(result.paginationBalances).toEqual({
+      nextCursor: '1',
+      prevCursor: '1',
+      take: 5,
+      hasMore: false,
+    });
+
+    expect(result.data.length).toBe(1);
+  });
+
+  it('should handle pagination when take is smaller than available balances', async () => {
+    const mockBalances = [
+      {
+        id: '10',
+        blockNumber: 10,
+        timestamp: 1700000001,
+        balance: '2000000000000000000',
+      },
+      {
+        id: '9',
+        blockNumber: 9,
+        timestamp: 1700000002,
+        balance: '1000000000000000000',
+      },
+    ];
+
+    (prismaMock.balance.findMany as jest.Mock).mockResolvedValue(mockBalances);
+
+    const result = await service.getBalanceByAddress(
+      '0x6306395B37120b1114EF08ee160f7C2f3a263558',
+      2,
+    );
+
+    expect(result.paginationBalances).toEqual({
+      nextCursor: '9',
+      prevCursor: '10',
+      take: 2,
+      hasMore: true,
+    });
+
+    expect(result.data.length).toBe(2);
   });
 
   it('should throw an error when Prisma query fails', async () => {

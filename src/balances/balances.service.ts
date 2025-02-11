@@ -54,7 +54,7 @@ export class BalancesService {
 
       if (response.length <= 0) {
         return {
-          paginationEvents: {
+          paginationBalances: {
             nextCursor: null,
             prevCursor: cursor || null,
             take,
