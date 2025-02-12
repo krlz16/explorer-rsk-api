@@ -82,7 +82,7 @@ describe('BalancesService', () => {
         nextCursor: null,
         prevCursor: null,
         take: 2,
-        hasMore: false,
+        hasMoreData: false,
       },
       data: [],
     });
