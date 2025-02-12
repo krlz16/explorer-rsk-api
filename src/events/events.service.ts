@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, event } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { isAddress } from '@rsksmart/rsk-utils';
-import BigNumber from 'bignumber.js';
 import { PaginationService } from 'src/common/pagination/pagination.service';
+import { EventParserService } from 'src/common/parsers/event-parser.service';
 import { PrismaService } from 'src/prisma.service';
 
 @Injectable()
@@ -10,7 +10,44 @@ export class EventsService {
   constructor(
     private prisma: PrismaService,
     private pgService: PaginationService,
+    private eventParser: EventParserService
   ) {}
+
+  async getEventById(eventId: string) {
+    const response = await this.prisma.event.findFirst({
+      where: {
+        eventId,
+      },
+      include: {
+        address_event_addressToaddress: {
+          select: {
+            name: true,
+            address: true,
+            contract_contract_addressToaddress: {
+              select: {
+                symbol: true,
+              },
+            },  
+          },
+        },
+        transaction: true,
+      },
+      orderBy: {
+        eventId: 'desc',
+      }
+    });
+
+    if (!response) {
+      return {
+        data: null,
+      };
+    }
+
+    const formattedData = this.eventParser.formatOneEvent(response, eventId);
+    return {
+      data: formattedData,
+    };
+  }
 
   async getEventsByAddress(
     address: string,
@@ -99,37 +136,17 @@ export class EventsService {
       },
     });
 
-    const formattedData = this.formatEvent(response);
+    if (!response.length) {
+      return {
+        data: null,
+      };
+    }
+
+    const formattedData = this.eventParser.formatTransferEvent(response);
     return {
       pagination,
       data: formattedData,
     };
   }
 
-  formatEvent(events: event[] | unknown[]) {
-    const formattedData = events.map((e) => {
-      e.timestamp = e.timestamp.toString() as unknown as bigint;
-      e.args = JSON.parse(e.args);
-      let totalSupply = 0;
-      if (e.args?.length === 3) {
-        totalSupply = new BigNumber(e.args[2].toString())
-          .dividedBy(new BigNumber(10).pow(18))
-          .toNumber();
-      }
-      const contrant_detail = {
-        name: e.address_event_addressToaddress.name,
-        symbol:
-          e.address_event_addressToaddress.contract_contract_addressToaddress
-            .symbol,
-      };
-      delete e.address_event_addressToaddress;
-      return {
-        ...e,
-        totalSupply,
-        contrant_detail,
-      };
-    });
-
-    return formattedData;
-  }
 }

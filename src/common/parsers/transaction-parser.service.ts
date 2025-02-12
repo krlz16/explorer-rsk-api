@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { transaction } from '@prisma/client';
+import { internal_transaction, transaction } from '@prisma/client';
 import BigNumber from 'bignumber.js';
 import { TX_STATUS } from '../constants';
 
@@ -44,5 +44,17 @@ export class TxParserService {
       ...tx,
       receipt,
     };
+  }
+
+  formtaItxs(itxs: internal_transaction[] | any) {
+    const formatData = itxs.map((tx) => {
+      tx.timestamp = tx.timestamp.toString() as unknown as bigint;
+      const action = JSON.parse(tx.action);
+      action.value = new BigNumber(action.value, 16).dividedBy(1e18);
+      action.gas = new BigNumber(action.gas.toString(), 16).toNumber().toString();
+      tx.action = action;
+      return tx;
+    });
+    return formatData;
   }
 }

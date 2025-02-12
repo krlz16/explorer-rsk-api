@@ -5,6 +5,11 @@ import { EventsService } from './events.service';
 export class EventsController {
   constructor(private eventsService: EventsService) {}
 
+  @Get('/:id')
+  getEventById(@Param('id') id: string) {
+    return this.eventsService.getEventById(id);
+  }
+
   @Get('/address/:address')
   getEventsByAddress(
     @Param('address') address: string,

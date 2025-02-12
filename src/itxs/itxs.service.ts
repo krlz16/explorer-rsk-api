@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import BigNumber from 'bignumber.js';
 import { PaginationService } from 'src/common/pagination/pagination.service';
+import { TxParserService } from 'src/common/parsers/transaction-parser.service';
 import { PrismaService } from 'src/prisma.service';
 
 @Injectable()
@@ -8,6 +9,7 @@ export class ItxsService {
   constructor(
     private prisma: PrismaService,
     private pgService: PaginationService,
+    private txParser: TxParserService,
   ) {}
 
   async getInternalTxById(itxId: string) {
@@ -29,15 +31,12 @@ export class ItxsService {
       .toNumber()
       .toString();
 
-    console.log('gas: ', gas);
     action.gas = gas;
-    // action.value = new BigNumber(action.value.toString(), 16)
-    //   .toNumber()
-    //   .toString();
-    action.value = 0;
-    console.log('result: ', result);
+    action.value = new BigNumber(action.value.toString(), 16)
+      .dividedBy(1e18)
+      .toNumber()
+      .toString();
     result.gasUsed = gasUsed || 0;
-    console.log('gasUsed: ', gasUsed);
     itx.action = action;
     itx.result = result;
     return {
@@ -79,19 +78,7 @@ export class ItxsService {
       },
     });
 
-    const formatData = response.map((itx) => {
-      itx.timestamp = itx.timestamp.toString() as unknown as bigint;
-      const action = JSON.parse(itx.action);
-      action.value = new BigNumber(action.value, 16).dividedBy(1e18);
-      action.gas = new BigNumber(action.gas.toString(), 16).toNumber().toString();
-
-      delete itx.action;
-      const data = {
-        ...itx,
-        action
-      }
-      return data;
-    });
+    const formatData = this.txParser.formtaItxs(response);
 
     return {
       pagination,
@@ -124,11 +111,8 @@ export class ItxsService {
       },
     });
 
-    const formatData = response.map((tx) => {
-      tx.timestamp = tx.timestamp.toString() as unknown as bigint;
-      tx.action = JSON.parse(tx.action);
-      return tx;
-    });
+    const formatData = this.txParser.formtaItxs(response);
+
     return {
       pagination,
       data: formatData,
@@ -173,7 +157,6 @@ export class ItxsService {
         ...internal_transaction,
       };
     });
-    console.log('formatData: ', formatData);
     return {
       pagination,
       data: formatData,
