@@ -1,6 +1,8 @@
 import { Controller, Get, Param, Query, Logger } from '@nestjs/common';
 import { AddressesService } from './addresses.service';
-import { TAKE_PAGE_DATA } from 'src/common/constants';
+import { PaginationTakeValidationPipe } from 'src/common/pipes/pagination-take.pipe';
+import { PaginationCursorValidationPipe } from 'src/common/pipes/pagination-cursor.pipe';
+import { AddressValidationPipe } from 'src/common/pipes/address-validation.pipe';
 
 @Controller('addresses')
 export class AddressesController {
@@ -17,11 +19,10 @@ export class AddressesController {
    */
   @Get()
   getAllAddresses(
-    @Query('take') take?: number,
-    @Query('cursor') cursor?: number,
+    @Query('take', PaginationTakeValidationPipe) take?: number,
+    @Query('cursor', PaginationCursorValidationPipe) cursor?: number,
   ) {
-    const takeData = take || TAKE_PAGE_DATA;
-    return this.addressService.getAddresses(takeData, cursor);
+    return this.addressService.getAddresses(take, cursor);
   }
 
   /**
@@ -31,7 +32,7 @@ export class AddressesController {
    * @returns Address details, including balance, transactions, contract information (if applicable), and block number.
    */
   @Get(':address')
-  getAddress(@Param('address') address: string) {
+  getAddress(@Param('address', AddressValidationPipe) address: string) {
     this.logger.log(`Fetching address details for ${address}`);
     return this.addressService.getAddress(address);
   }
@@ -43,7 +44,9 @@ export class AddressesController {
    * @returns Verification status of the contract.
    */
   @Get('verification/:address')
-  getContractVerification(@Param('address') address: string) {
+  getContractVerification(
+    @Param('address', AddressValidationPipe) address: string,
+  ) {
     return this.addressService.getContractVerification(address);
   }
 }
