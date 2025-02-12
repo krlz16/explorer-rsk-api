@@ -1,4 +1,5 @@
 import { PipeTransform, Injectable, BadRequestException } from '@nestjs/common';
+import { MAX_INT_4_BYTES } from '../constants';
 
 @Injectable()
 export class BlockIdentifierPipe implements PipeTransform {
@@ -27,9 +28,9 @@ export class BlockIdentifierPipe implements PipeTransform {
       );
     }
 
-    if (block > 2147483647) {
+    if (block > MAX_INT_4_BYTES) {
       throw new BadRequestException(
-        `Block number ${block} exceeds the allowed limit of 2,147,483,647.`,
+        `Block number ${block} exceeds the allowed limit.`,
       );
     }
   }
