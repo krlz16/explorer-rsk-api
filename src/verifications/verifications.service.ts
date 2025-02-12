@@ -100,8 +100,8 @@ export class VerificationsService {
           address: result.address,
           version: result.version,
           name: result.name,
-          dataResponse: JSON.stringify(result) ?? 'No data',
-          storedInDB: saveNewItem.toString(),
+          dataResponse: result ?? 'No data',
+          storedInDB: saveNewItem ? saveNewItem.toString() : null,
         },
       };
     } catch (error) {
