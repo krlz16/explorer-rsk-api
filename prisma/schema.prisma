@@ -14,7 +14,7 @@ datasource db {
 }
 
 model address {
-  id                                                             Int                      @default(autoincrement())
+  id                                                             Int                      @unique @default(autoincrement())
   address                                                        String                   @id @db.VarChar(42)
   isNative                                                       Boolean                  @map("is_native")
   type                                                           String                   @db.VarChar
@@ -52,6 +52,7 @@ model balance {
   @@index([address], map: "idx_balance_address")
   @@index([blockNumber], map: "idx_balance_block_number")
   @@index([blockHash])
+  @@index([address, blockNumber], map: "idx_address_blockNumber")
 }
 
 model block {
@@ -161,7 +162,7 @@ model event {
   topic2                          String?            @db.VarChar
   topic3                          String?            @db.VarChar
   blockHash                       String             @map("block_hash") @db.VarChar(66)
-  blockNumber                     Int                @map("block_number")
+  blockNumber                     Int                @unique @map("block_number")
   data                            String             @db.VarChar
   event                           String?            @db.VarChar
   logIndex                        Int                @map("log_index")

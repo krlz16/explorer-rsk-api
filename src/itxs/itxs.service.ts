@@ -63,7 +63,7 @@ export class ItxsService {
       count,
     });
 
-    const data = await this.prisma.internal_transaction.findMany({
+    const response = await this.prisma.internal_transaction.findMany({
       take: pagination.take,
       skip: pagination.skip,
       where,
@@ -79,14 +79,18 @@ export class ItxsService {
       },
     });
 
-    const response = data.map((itx) => {
+    const formatData = response.map((itx) => {
       itx.timestamp = itx.timestamp.toString() as unknown as bigint;
-      return itx;
-    });
+      const action = JSON.parse(itx.action);
+      action.value = new BigNumber(action.value, 16).dividedBy(1e18);
+      action.gas = new BigNumber(action.gas.toString(), 16).toNumber().toString();
 
-    const formatData = response.map((tx) => {
-      tx.action = JSON.parse(tx.action);
-      return tx;
+      delete itx.action;
+      const data = {
+        ...itx,
+        action
+      }
+      return data;
     });
 
     return {
