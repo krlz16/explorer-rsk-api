@@ -187,12 +187,6 @@ describe('AddressesService', () => {
       });
     });
 
-    it('should throw BadRequestException for invalid address format', async () => {
-      await expect(service.getAddress('invalid-address')).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-
     it('should return null if address is not found', async () => {
       jest.spyOn(prisma.address, 'findFirst').mockResolvedValue(null);
 

@@ -24,28 +24,8 @@ export class AddressesService {
    * @param {number} take - Number of records per page. Negative values return the previous page.
    * @returns {Promise<{ pagination: any, data: any }>} - Paginated list of addresses.
    */
-  async getAddresses(take: number = TAKE_PAGE_DATA, cursor?: number) {
+  async getAddresses(take: number, cursor?: number) {
     try {
-      if (Math.abs(take) > TAKE_PAGE_DATA) {
-        throw new BadRequestException(
-          `Cannot fetch more than ${TAKE_PAGE_DATA} addresses at a time. Requested: ${take}`,
-        );
-      }
-
-      if (cursor !== undefined) {
-        if (!Number.isInteger(cursor)) {
-          throw new BadRequestException(
-            `Cursor must be an integer. Received: ${cursor}`,
-          );
-        }
-
-        if (cursor < 0) {
-          throw new BadRequestException(
-            `Cursor must be a non-negative integer. Received: ${cursor}`,
-          );
-        }
-      }
-
       if (take < 0 && !cursor) {
         throw new BadRequestException(
           'Cannot paginate backward without a cursor.',
@@ -122,16 +102,8 @@ export class AddressesService {
    */
   async getAddress(address: string) {
     try {
-      if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-        throw new BadRequestException(
-          `Invalid address format: ${address}. Must be a valid 40-character hex string.`,
-        );
-      }
-
-      const normalizedAddress = address.toLowerCase();
-
       const addressData = await this.prisma.address.findFirst({
-        where: { address: normalizedAddress },
+        where: { address },
         include: {
           contract_destruction_tx: { select: { tx: true } },
           contract_contract_addressToaddress: {
@@ -189,12 +161,6 @@ export class AddressesService {
    */
   async getContractVerification(address: string) {
     try {
-      if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-        throw new BadRequestException(
-          `Invalid address format: ${address}. Must be a valid 40-character hex string.`,
-        );
-      }
-
       const verification = await this.prisma.verification_result.findFirst({
         where: { address, match: true },
       });

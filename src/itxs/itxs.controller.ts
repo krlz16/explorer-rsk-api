@@ -1,6 +1,6 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ItxsService } from './itxs.service';
-import { ParseBlockOrHashPipe } from 'src/common/pipes/parseBlockOrHashPipe.pipe';
+import { BlockIdentifierPipe } from 'src/common/pipes/block-identifier.pipe';
 
 @Controller('itxs')
 export class ItxsController {
@@ -13,7 +13,7 @@ export class ItxsController {
 
   @Get('/block/:blockOrhash')
   getInternalTxByBlock(
-    @Param('blockOrhash', ParseBlockOrHashPipe) blockOrhash: string,
+    @Param('blockOrhash', BlockIdentifierPipe) blockOrhash: string,
     @Query('page_data') page_data: number,
     @Query('take_data') take_data: number,
   ) {
