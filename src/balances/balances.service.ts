@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common';
 import BigNumber from 'bignumber.js';
 import { PrismaService } from 'src/prisma.service';
-import { isAddress } from '@rsksmart/rsk-utils';
 
 @Injectable()
 export class BalancesService {
