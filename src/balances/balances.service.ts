@@ -6,7 +6,6 @@ import {
 import BigNumber from 'bignumber.js';
 import { TAKE_PAGE_DATA } from 'src/common/constants';
 import { PrismaService } from 'src/prisma.service';
-import { isAddress } from '@rsksmart/rsk-utils';
 
 @Injectable()
 export class BalancesService {
@@ -25,25 +24,18 @@ export class BalancesService {
     cursor?: number,
   ) {
     try {
-      if (!Number.isInteger(take) || take === 0) {
+      if (take < 0 && !cursor) {
         throw new BadRequestException(
-          `Invalid "take" value: ${take}. Must be a non zero number.`,
+          'Cannot paginate backward without a cursor.',
         );
       }
-      if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-        throw new BadRequestException(`Invalid address: ${address}`);
-      }
 
-      const where = {
-        address,
-      };
       const response = await this.prisma.balance.findMany({
-        take,
-        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-        where,
-        orderBy: {
-          id: 'desc',
-        },
+        take: take > 0 ? take + 1 : take - 1,
+        cursor: cursor ? { id: cursor } : undefined,
+        skip: cursor ? 1 : undefined,
+        where: { address },
+        orderBy: { id: 'desc' },
         select: {
           id: true,
           blockNumber: true,
@@ -58,13 +50,19 @@ export class BalancesService {
             nextCursor: null,
             prevCursor: cursor || null,
             take,
-            hasMore: false,
+            hasMoreData: false,
           },
           data: [],
         };
       }
 
-      const formattedData = response.map((b) => {
+      const hasMoreData = response.length > Math.abs(take);
+
+      const paginatedBalances = hasMoreData
+        ? response.slice(0, Math.abs(take))
+        : response;
+
+      const formattedData = paginatedBalances.map((b) => {
         return {
           id: b.id.toString(),
           blockNumber: b.blockNumber,
@@ -73,16 +71,20 @@ export class BalancesService {
         };
       });
 
-      const nextCursor = formattedData[formattedData.length - 1].id;
-      const prevCursor = formattedData[0].id;
-      const hasMore = formattedData.length === take;
+      const nextCursor =
+        take > 0 && !hasMoreData
+          ? null
+          : formattedData[formattedData.length - 1]?.id;
+
+      const prevCursor =
+        !cursor || (take < 0 && !hasMoreData) ? null : formattedData[0]?.id;
 
       return {
         paginationBalances: {
-          nextCursor: nextCursor.toString(),
-          prevCursor: prevCursor.toString(),
+          nextCursor,
+          prevCursor,
           take,
-          hasMore,
+          hasMoreData,
         },
         data: formattedData,
       };

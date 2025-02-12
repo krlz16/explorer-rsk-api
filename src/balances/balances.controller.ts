@@ -1,6 +1,16 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  Param,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import { BalancesService } from './balances.service';
 import { TAKE_PAGE_DATA } from 'src/common/constants';
+import { AddressValidationPipe } from 'src/common/pipes/address-validation.pipe';
+import { TakeValidationPipe } from 'src/common/pipes/take-validation.pipe';
+import { CursorValidationPipe } from 'src/common/pipes/cursor-validation.pipe';
 
 @Controller('balances')
 export class BalancesController {
@@ -14,12 +24,12 @@ export class BalancesController {
    * @returns Paginated balances data.
    */
   @Get('/address/:address')
-  getAllAddresses(
-    @Param('address') address: string,
-    @Query('take') take?: number,
-    @Query('cursor') cursor?: number,
+  @UsePipes(new ValidationPipe({ transform: true }))
+  getBalanceByAddress(
+    @Param('address', AddressValidationPipe) address: string,
+    @Query('take', TakeValidationPipe) take: number = TAKE_PAGE_DATA,
+    @Query('cursor', CursorValidationPipe) cursor: number,
   ) {
-    const takeData = take || TAKE_PAGE_DATA;
-    return this.balanceService.getBalanceByAddress(address, takeData, cursor);
+    return this.balanceService.getBalanceByAddress(address, take, cursor);
   }
 }
