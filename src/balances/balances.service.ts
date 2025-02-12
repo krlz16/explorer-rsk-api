@@ -4,7 +4,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import BigNumber from 'bignumber.js';
-import { TAKE_PAGE_DATA } from 'src/common/constants';
 import { PrismaService } from 'src/prisma.service';
 
 @Injectable()
@@ -16,13 +15,9 @@ export class BalancesService {
    * @param {string} address - The address to fetch balances for.
    * @param {number} take - Number of blocks to retrieve.
    * @param {number} cursor - The block number to start from (optional).
-   * @returns Paginated block data.
+   * @returns Paginated balances data for an address.
    */
-  async getBalanceByAddress(
-    address: string,
-    take: number = TAKE_PAGE_DATA,
-    cursor?: number,
-  ) {
+  async getBalanceByAddress(address: string, take: number, cursor?: number) {
     try {
       if (take < 0 && !cursor) {
         throw new BadRequestException(

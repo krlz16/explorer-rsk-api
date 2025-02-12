@@ -7,7 +7,6 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { BalancesService } from './balances.service';
-import { TAKE_PAGE_DATA } from 'src/common/constants';
 import { AddressValidationPipe } from 'src/common/pipes/address-validation.pipe';
 import { TakeValidationPipe } from 'src/common/pipes/take-validation.pipe';
 import { CursorValidationPipe } from 'src/common/pipes/cursor-validation.pipe';
@@ -19,7 +18,7 @@ export class BalancesController {
   /**
    * Fetch a paginated list of balances using keyset pagination.
    * @param {string} address - The address to fetch balances for.
-   * @param {number} take - Number of records to retrieve.
+   * @param {number} take - Number of records to retrieve. Negative values will paginate backwards.
    * @param {number} cursor - The block number to start from (optional).
    * @returns Paginated balances data.
    */
@@ -27,8 +26,8 @@ export class BalancesController {
   @UsePipes(new ValidationPipe({ transform: true }))
   getBalanceByAddress(
     @Param('address', AddressValidationPipe) address: string,
-    @Query('take', TakeValidationPipe) take: number = TAKE_PAGE_DATA,
-    @Query('cursor', CursorValidationPipe) cursor: number,
+    @Query('take', TakeValidationPipe) take?: number,
+    @Query('cursor', CursorValidationPipe) cursor?: number,
   ) {
     return this.balanceService.getBalanceByAddress(address, take, cursor);
   }
