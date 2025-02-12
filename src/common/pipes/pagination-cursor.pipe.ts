@@ -1,7 +1,7 @@
 import { PipeTransform, Injectable, BadRequestException } from '@nestjs/common';
 
 @Injectable()
-export class CursorValidationPipe implements PipeTransform {
+export class PaginationCursorValidationPipe implements PipeTransform {
   transform(value: string): number {
     if (!value) return undefined;
 

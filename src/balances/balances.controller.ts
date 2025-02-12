@@ -8,8 +8,8 @@ import {
 } from '@nestjs/common';
 import { BalancesService } from './balances.service';
 import { AddressValidationPipe } from 'src/common/pipes/address-validation.pipe';
-import { TakeValidationPipe } from 'src/common/pipes/take-validation.pipe';
-import { CursorValidationPipe } from 'src/common/pipes/cursor-validation.pipe';
+import { PaginationTakeValidationPipe } from 'src/common/pipes/pagination-take.pipe';
+import { PaginationCursorValidationPipe } from 'src/common/pipes/pagination-cursor.pipe';
 
 @Controller('balances')
 export class BalancesController {
@@ -26,8 +26,8 @@ export class BalancesController {
   @UsePipes(new ValidationPipe({ transform: true }))
   getBalanceByAddress(
     @Param('address', AddressValidationPipe) address: string,
-    @Query('take', TakeValidationPipe) take?: number,
-    @Query('cursor', CursorValidationPipe) cursor?: number,
+    @Query('take', PaginationTakeValidationPipe) take?: number,
+    @Query('cursor', PaginationCursorValidationPipe) cursor?: number,
   ) {
     return this.balanceService.getBalanceByAddress(address, take, cursor);
   }

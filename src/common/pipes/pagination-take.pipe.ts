@@ -2,7 +2,7 @@ import { PipeTransform, Injectable, BadRequestException } from '@nestjs/common';
 import { TAKE_PAGE_DATA } from 'src/common/constants';
 
 @Injectable()
-export class TakeValidationPipe implements PipeTransform {
+export class PaginationTakeValidationPipe implements PipeTransform {
   transform(value: string): number {
     if (!value) {
       return TAKE_PAGE_DATA;
