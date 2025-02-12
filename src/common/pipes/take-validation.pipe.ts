@@ -4,6 +4,10 @@ import { TAKE_PAGE_DATA } from 'src/common/constants';
 @Injectable()
 export class TakeValidationPipe implements PipeTransform {
   transform(value: string): number {
+    if (!value) {
+      return TAKE_PAGE_DATA;
+    }
+
     const numericValue = parseInt(value, 10);
 
     if (isNaN(numericValue)) {
