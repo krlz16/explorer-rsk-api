@@ -88,6 +88,25 @@ describe('BalancesService', () => {
     });
   });
 
+  it('should return empty response when no balances exist', async () => {
+    (prismaMock.balance.findMany as jest.Mock).mockResolvedValue([]);
+
+    const result = await service.getBalanceByAddress(
+      '0x6306395B37120b1114EF08ee160f7C2f3a263558',
+      2,
+    );
+
+    expect(result).toEqual({
+      paginationBalances: {
+        nextCursor: null,
+        prevCursor: null,
+        take: 2,
+        hasMoreData: false,
+      },
+      data: [],
+    });
+  });
+
   it('should return balances with pagination and cursor', async () => {
     const mockBalances = [
       {

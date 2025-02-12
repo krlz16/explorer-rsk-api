@@ -1,7 +1,8 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { BlocksService } from './blocks.service';
-import { ParseBlockOrHashPipe } from 'src/common/pipes/parseBlockOrHashPipe.pipe';
-import { TAKE_PAGE_DATA } from 'src/common/constants';
+import { PaginationTakeValidationPipe } from 'src/common/pipes/pagination-take.pipe';
+import { PaginationCursorValidationPipe } from 'src/common/pipes/pagination-cursor.pipe';
+import { BlockIdentifierPipe } from 'src/common/pipes/block-identifier.pipe';
 
 @Controller('blocks')
 export class BlocksController {
@@ -14,9 +15,11 @@ export class BlocksController {
    * @returns Paginated blocks data.
    */
   @Get()
-  getBlocks(@Query('take') take?: number, @Query('cursor') cursor?: number) {
-    const takeData = take || TAKE_PAGE_DATA;
-    return this.blockService.getBlocks(takeData, cursor);
+  getBlocks(
+    @Query('take', PaginationTakeValidationPipe) take?: number,
+    @Query('cursor', PaginationCursorValidationPipe) cursor?: number,
+  ) {
+    return this.blockService.getBlocks(take, cursor);
   }
 
   /**
@@ -25,7 +28,7 @@ export class BlocksController {
    * @returns Block details.
    */
   @Get(':blockOrHash')
-  getBlock(@Param('blockOrHash', ParseBlockOrHashPipe) blockOrHash: string) {
+  getBlock(@Param('blockOrHash', BlockIdentifierPipe) blockOrHash: string) {
     return this.blockService.getBlock(blockOrHash);
   }
 }
