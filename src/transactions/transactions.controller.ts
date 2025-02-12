@@ -1,6 +1,6 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
-import { ParseBlockOrHashPipe } from 'src/common/pipes/parseBlockOrHashPipe.pipe';
+import { BlockIdentifierPipe } from 'src/common/pipes/block-identifier.pipe';
 
 @Controller('txs')
 export class TransactionsController {
@@ -31,7 +31,7 @@ export class TransactionsController {
 
   @Get('/block/:blockOrhash')
   getTxByBlock(
-    @Param('blockOrhash', ParseBlockOrHashPipe) blockOrhash: string,
+    @Param('blockOrhash', BlockIdentifierPipe) blockOrhash: string,
     @Query('page_data') page_data: number,
     @Query('take_data') take_data: number,
   ) {
