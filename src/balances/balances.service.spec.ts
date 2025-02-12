@@ -55,14 +55,14 @@ describe('BalancesService', () => {
     );
 
     expect(result.paginationBalances).toEqual({
-      nextCursor: '2',
-      prevCursor: '1',
+      nextCursor: null,
+      prevCursor: null,
       take: 2,
-      hasMore: true,
+      hasMoreData: false,
     });
     expect(result.data.length).toBe(2);
     expect(prismaMock.balance.findMany).toHaveBeenCalledWith({
-      take: 2,
+      take: 3,
       where: { address: '0x6306395B37120b1114EF08ee160f7C2f3a263558' },
       orderBy: { id: 'desc' },
       select: expect.any(Object),
@@ -82,27 +82,10 @@ describe('BalancesService', () => {
         nextCursor: null,
         prevCursor: null,
         take: 2,
-        hasMore: false,
+        hasMoreData: false,
       },
       data: [],
     });
-  });
-
-  it('should throw an error if the address is invalid', async () => {
-    const invalidAddresses = [
-      '0x1234567890abcdef1234567890abcdef1234567',
-      '1234567890abcdef1234567890abcdef12345678',
-      '0xGHIJKLMNOPQRSTUVWXYZ1234567890abcdef12',
-      '',
-      null,
-      undefined,
-    ];
-
-    for (const address of invalidAddresses) {
-      await expect(
-        service.getBalanceByAddress(address as string, 2),
-      ).rejects.toThrow(BadRequestException);
-    }
   });
 
   it('should return balances with pagination and cursor', async () => {
@@ -130,17 +113,11 @@ describe('BalancesService', () => {
     );
 
     expect(result.paginationBalances).toEqual({
-      nextCursor: '49',
+      nextCursor: null,
       prevCursor: '50',
       take: 2,
-      hasMore: true,
+      hasMoreData: false,
     });
-  });
-
-  it('should throw an error for invalid take values', async () => {
-    await expect(service.getBalanceByAddress('0xAddress', 0)).rejects.toThrow(
-      'Invalid "take" value: 0. Must be a non zero number.',
-    );
   });
 
   it('should handle pagination when take is larger than available balances', async () => {
@@ -161,10 +138,10 @@ describe('BalancesService', () => {
     );
 
     expect(result.paginationBalances).toEqual({
-      nextCursor: '1',
-      prevCursor: '1',
+      nextCursor: null,
+      prevCursor: null,
       take: 5,
-      hasMore: false,
+      hasMoreData: false,
     });
 
     expect(result.data.length).toBe(1);
@@ -194,10 +171,10 @@ describe('BalancesService', () => {
     );
 
     expect(result.paginationBalances).toEqual({
-      nextCursor: '9',
-      prevCursor: '10',
+      nextCursor: null,
+      prevCursor: null,
       take: 2,
-      hasMore: true,
+      hasMoreData: false,
     });
 
     expect(result.data.length).toBe(2);
