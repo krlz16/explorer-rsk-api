@@ -46,7 +46,7 @@ export class TxParserService {
     };
   }
 
-  formtaItxs(itxs: internal_transaction[] | any) {
+  formtItxs(itxs: internal_transaction[] | any) {
     const formatData = itxs.map((tx) => {
       tx.timestamp = tx.timestamp.toString() as unknown as bigint;
       const action = JSON.parse(tx.action);
