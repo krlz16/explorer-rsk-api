@@ -6,7 +6,12 @@ import { PaginationService } from 'src/common/pagination/pagination.service';
 import { EventParserService } from 'src/common/parsers/event-parser.service';
 
 @Module({
-  providers: [EventsService, PrismaService, PaginationService, EventParserService],
+  providers: [
+    EventsService,
+    PrismaService,
+    PaginationService,
+    EventParserService,
+  ],
   controllers: [EventsController],
 })
 export class EventsModule {}

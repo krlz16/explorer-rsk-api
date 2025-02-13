@@ -51,7 +51,9 @@ export class TxParserService {
       tx.timestamp = tx.timestamp.toString() as unknown as bigint;
       const action = JSON.parse(tx.action);
       action.value = new BigNumber(action.value, 16).dividedBy(1e18);
-      action.gas = new BigNumber(action.gas.toString(), 16).toNumber().toString();
+      action.gas = new BigNumber(action.gas.toString(), 16)
+        .toNumber()
+        .toString();
       tx.action = action;
       return tx;
     });
