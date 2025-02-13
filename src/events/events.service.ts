@@ -12,6 +12,11 @@ export class EventsService {
     private eventParser: EventParserService,
   ) {}
 
+   /**
+   * Fetch transfer events by ID.
+   * @param {string} eventId - Event ID.
+   * @returns Transfer events details, including token deatils and transactions details.
+   */
   async getEventById(eventId: string) {
     const response = await this.prisma.event.findFirst({
       where: {
