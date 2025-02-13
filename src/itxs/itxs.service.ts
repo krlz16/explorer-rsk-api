@@ -78,7 +78,7 @@ export class ItxsService {
       },
     });
 
-    const formatData = this.txParser.formtItxs(response);
+    const formatData = this.txParser.formatItxs(response);
 
     return {
       pagination,
@@ -111,7 +111,7 @@ export class ItxsService {
       },
     });
 
-    const formatData = this.txParser.formtItxs(response);
+    const formatData = this.txParser.formatItxs(response);
 
     return {
       pagination,
