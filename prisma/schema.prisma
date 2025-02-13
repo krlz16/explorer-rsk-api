@@ -53,6 +53,7 @@ model balance {
   @@index([blockNumber], map: "idx_balance_block_number")
   @@index([blockHash])
   @@index([address, blockNumber], map: "idx_address_blockNumber")
+  @@index([address, id], map: "idx_balance_address_id")
 }
 
 model block {
