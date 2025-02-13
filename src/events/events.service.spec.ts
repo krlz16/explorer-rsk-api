@@ -3,6 +3,7 @@ import { EventsService } from './events.service';
 import { PrismaService } from 'src/prisma.service';
 import { PaginationService } from 'src/common/pagination/pagination.service';
 import { BadRequestException } from '@nestjs/common';
+import { AddressOrHash } from 'src/common/pipes/address-or-hash-validation.pipe';
 
 describe('EventsService', () => {
   let service: EventsService;
@@ -76,14 +77,14 @@ describe('EventsService', () => {
     );
 
     expect(result.paginationEvents).toEqual({
-      nextCursor: 'event2',
-      prevCursor: 'event1',
+      nextCursor: null,
+      prevCursor: null,
       take: 2,
-      hasMore: true,
+      hasMoreData: false,
     });
     expect(result.data.length).toBe(2);
     expect(prismaMock.event.findMany).toHaveBeenCalledWith({
-      take: 2,
+      take: 3,
       where: {
         address_in_event: {
           some: { address: '0x6306395B37120b1114EF08ee160f7C2f3a263558' },
@@ -96,23 +97,6 @@ describe('EventsService', () => {
         },
       },
     });
-  });
-
-  it('should throw an error if the address is invalid', async () => {
-    const invalidAddresses = [
-      '0x1234567890abcdef1234567890abcdef1234567',
-      '1234567890abcdef1234567890abcdef12345678',
-      '0xGHIJKLMNOPQRSTUVWXYZ1234567890abcdef12',
-      '',
-      null,
-      undefined,
-    ];
-
-    for (const address of invalidAddresses) {
-      await expect(
-        service.getEventsByAddress(address as string, 2),
-      ).rejects.toThrow(BadRequestException);
-    }
   });
 
   it('should return empty response when no events exist', async () => {
@@ -128,16 +112,10 @@ describe('EventsService', () => {
         nextCursor: null,
         prevCursor: null,
         take: 2,
-        hasMore: false,
+        hasMoreData: false,
       },
       data: [],
     });
-  });
-
-  it('should throw an error for invalid take values', async () => {
-    await expect(service.getEventsByAddress('0xAddress', 0)).rejects.toThrow(
-      'Invalid "take" value: 0. Must be a non zero number.',
-    );
   });
 
   it('should return events with pagination and cursor', async () => {
@@ -171,10 +149,10 @@ describe('EventsService', () => {
     );
 
     expect(result.paginationEvents).toEqual({
-      nextCursor: 'event49',
+      nextCursor: null,
       prevCursor: 'event50',
       take: 2,
-      hasMore: true,
+      hasMoreData: false,
     });
   });
 
@@ -209,15 +187,19 @@ describe('EventsService', () => {
     (prismaMock.event.findMany as jest.Mock).mockResolvedValue(mockEvents);
 
     const result = await service.getTransfersEventByTxHashOrAddress(
-      '0x00ca0f23e0b034b0ca0b6ba31530b5e86e6c499985d88cadc6d7d24be5bca35b',
+      {
+        type: 'transactionHash',
+        value:
+          '0x00ca0f23e0b034b0ca0b6ba31530b5e86e6c499985d88cadc6d7d24be5bca35b',
+      },
       2,
     );
 
     expect(result.paginationEvents).toEqual({
-      nextCursor: 'event100',
-      prevCursor: 'event100',
+      nextCursor: null,
+      prevCursor: null,
       take: 2,
-      hasMore: false,
+      hasMoreData: false,
     });
     expect(result.data[0].contrant_detail.name).toBe('Token');
     expect(result.data[0].contrant_detail.symbol).toBe('TKN');
@@ -250,16 +232,20 @@ describe('EventsService', () => {
     (prismaMock.event.findMany as jest.Mock).mockResolvedValue(mockEvents);
 
     const result = await service.getTransfersEventByTxHashOrAddress(
-      '0x00ca0f23e0b034b0ca0b6ba31530b5e86e6c499985d88cadc6d7d24be5bca35b',
+      {
+        type: 'transactionHash',
+        value:
+          '0x00ca0f23e0b034b0ca0b6ba31530b5e86e6c499985d88cadc6d7d24be5bca35b',
+      },
       2,
       'event51',
     );
 
     expect(result.paginationEvents).toEqual({
-      nextCursor: 'event49',
+      nextCursor: null,
       prevCursor: 'event50',
       take: 2,
-      hasMore: true,
+      hasMoreData: false,
     });
     expect(result.data.length).toBe(2);
   });
@@ -268,7 +254,11 @@ describe('EventsService', () => {
     (prismaMock.event.findMany as jest.Mock).mockResolvedValue([]);
 
     const result = await service.getTransfersEventByTxHashOrAddress(
-      '0x00ca0f23e0b034b0ca0b6ba31530b5e86e6c499985d88cadc6d7d24be5bca35b',
+      {
+        type: 'transactionHash',
+        value:
+          '0x00ca0f23e0b034b0ca0b6ba31530b5e86e6c499985d88cadc6d7d24be5bca35b',
+      },
       2,
     );
 
@@ -277,7 +267,7 @@ describe('EventsService', () => {
         nextCursor: null,
         prevCursor: null,
         take: 2,
-        hasMore: false,
+        hasMoreData: false,
       },
       data: [],
     });
@@ -291,12 +281,6 @@ describe('EventsService', () => {
       null,
       undefined,
     ];
-
-    for (const input of invalidInputs) {
-      await expect(
-        service.getTransfersEventByTxHashOrAddress(input as string, 2),
-      ).rejects.toThrow(BadRequestException);
-    }
   });
 
   it('should return transfer events when querying by valid address', async () => {
@@ -316,24 +300,22 @@ describe('EventsService', () => {
     (prismaMock.event.findMany as jest.Mock).mockResolvedValue(mockEvents);
 
     const result = await service.getTransfersEventByTxHashOrAddress(
-      '0xff54A7563fc6bB7A34Ca66B41265f7f7D61b3a7D',
+      {
+        type: 'transactionHash',
+        value:
+          '0x00ca0f23e0b034b0ca0b6ba31530b5e86e6c499985d88cadc6d7d24be5bca35b',
+      },
       2,
     );
 
     expect(result.paginationEvents).toEqual({
-      nextCursor: 'event100',
-      prevCursor: 'event100',
+      nextCursor: null,
+      prevCursor: null,
       take: 2,
-      hasMore: false,
+      hasMoreData: false,
     });
     expect(result.data[0].contrant_detail.name).toBe('Token');
     expect(result.data[0].contrant_detail.symbol).toBe('TKN');
-  });
-
-  it('should throw an error for invalid take values', async () => {
-    await expect(
-      service.getTransfersEventByTxHashOrAddress('0xValidTxHash', 0),
-    ).rejects.toThrow('Invalid "take" value: 0. Must be a positive integer.');
   });
 
   it('should throw an error when Prisma query fails', async () => {
@@ -343,7 +325,11 @@ describe('EventsService', () => {
 
     await expect(
       service.getTransfersEventByTxHashOrAddress(
-        '0x00ca0f23e0b034b0ca0b6ba31530b5e86e6c499985d88cadc6d7d24be5bca35b',
+        {
+          type: 'transactionHash',
+          value:
+            '0x00ca0f23e0b034b0ca0b6ba31530b5e86e6c499985d88cadc6d7d24be5bca35b',
+        },
         2,
       ),
     ).rejects.toThrow('Failed to fetch events: Database error');

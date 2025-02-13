@@ -1,6 +1,11 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { EventsService } from './events.service';
-import { TAKE_PAGE_DATA } from 'src/common/constants';
+import { AddressValidationPipe } from 'src/common/pipes/address-validation.pipe';
+import { PaginationTakeValidationPipe } from 'src/common/pipes/pagination-take.pipe';
+import {
+  AddressOrHash,
+  AddressOrHashValidationPipe,
+} from 'src/common/pipes/address-or-hash-validation.pipe';
 
 @Controller('events')
 export class EventsController {
@@ -15,12 +20,11 @@ export class EventsController {
    */
   @Get('/address/:address')
   getEventsByAddress(
-    @Param('address') address: string,
-    @Query('take') take?: number,
+    @Param('address', AddressValidationPipe) address: string,
+    @Query('take', PaginationTakeValidationPipe) take?: number,
     @Query('cursor') cursor?: string,
   ) {
-    const takeData = take || TAKE_PAGE_DATA;
-    return this.eventsService.getEventsByAddress(address, takeData, cursor);
+    return this.eventsService.getEventsByAddress(address, take, cursor);
   }
 
   /**
@@ -32,14 +36,14 @@ export class EventsController {
    */
   @Get('/tx/:addressOrhash')
   getEventByTxHash(
-    @Param('addressOrhash') addressOrhash: string,
-    @Query('take') take?: number,
+    @Param('addressOrhash', AddressOrHashValidationPipe)
+    addressOrhash: AddressOrHash,
+    @Query('take', PaginationTakeValidationPipe) take?: number,
     @Query('cursor') cursor?: string,
   ) {
-    const takeData = take || TAKE_PAGE_DATA;
     return this.eventsService.getTransfersEventByTxHashOrAddress(
       addressOrhash,
-      takeData,
+      take,
       cursor,
     );
   }

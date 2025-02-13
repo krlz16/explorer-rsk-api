@@ -1,16 +1,12 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma, event } from '@prisma/client';
 import BigNumber from 'bignumber.js';
-import { TAKE_PAGE_DATA } from 'src/common/constants';
-import { PaginationService } from 'src/common/pagination/pagination.service';
+import { AddressOrHash } from 'src/common/pipes/address-or-hash-validation.pipe';
 import { PrismaService } from 'src/prisma.service';
 
 @Injectable()
 export class EventsService {
-  constructor(
-    private prisma: PrismaService,
-    private pgService: PaginationService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
   /**
    * Fetch paginated events per address using keyset pagination.
    * @param {string} address - The address to filter events by.
@@ -20,24 +16,21 @@ export class EventsService {
    */
   async getEventsByAddress(address: string, take: number, cursor?: string) {
     try {
-      if (!Number.isInteger(take) || take === 0) {
+      if (take < 0 && !cursor) {
         throw new BadRequestException(
-          `Invalid "take" value: ${take}. Must be a non zero number.`,
+          'Cannot paginate backward without a cursor.',
         );
       }
-      if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-        throw new BadRequestException(`Invalid address: ${address}`);
-      }
-      const where = {
-        address_in_event: {
-          some: { address },
-        },
-      };
 
       const response = await this.prisma.event.findMany({
-        take,
-        ...(cursor ? { cursor: { eventId: cursor }, skip: 1 } : {}),
-        where,
+        take: take > 0 ? take + 1 : take - 1,
+        cursor: cursor ? { eventId: cursor } : undefined,
+        skip: cursor ? 1 : undefined,
+        where: {
+          address_in_event: {
+            some: { address },
+          },
+        },
         include: {
           address_in_event: {
             select: {
@@ -57,13 +50,19 @@ export class EventsService {
             nextCursor: null,
             prevCursor: cursor || null,
             take,
-            hasMore: false,
+            hasMoreData: false,
           },
           data: [],
         };
       }
 
-      const formattedData = response.map((e) => {
+      const hasMoreData = response.length > Math.abs(take);
+
+      const paginatedEvents = hasMoreData
+        ? response.slice(0, Math.abs(take))
+        : response;
+
+      const formattedData = paginatedEvents.map((e) => {
         e.timestamp = e.timestamp.toString() as unknown as bigint;
         e.abi = JSON.parse(e.abi);
         e.args = JSON.parse(e.args);
@@ -71,16 +70,21 @@ export class EventsService {
       });
 
       const nextCursor =
-        formattedData[formattedData.length - 1].eventId || null;
-      const prevCursor = formattedData[0].eventId || null;
-      const hasMore = formattedData.length === Math.abs(take);
+        take > 0 && !hasMoreData
+          ? null
+          : formattedData[formattedData.length - 1]?.eventId;
+
+      const prevCursor =
+        !cursor || (take < 0 && !hasMoreData)
+          ? null
+          : formattedData[0]?.eventId;
 
       return {
         paginationEvents: {
           nextCursor,
           prevCursor,
           take,
-          hasMore,
+          hasMoreData,
         },
         data: formattedData,
       };
@@ -100,35 +104,26 @@ export class EventsService {
    * @returns Event details.
    */
   async getTransfersEventByTxHashOrAddress(
-    addressOrhash: string,
-    take: number = TAKE_PAGE_DATA,
+    addressOrhash: AddressOrHash,
+    take: number,
     cursor?: string,
   ) {
     try {
-      if (!Number.isInteger(take) || take === 0) {
+      if (take < 0 && !cursor) {
         throw new BadRequestException(
-          `Invalid "take" value: ${take}. Must be a positive integer.`,
+          'Cannot paginate backward without a cursor.',
         );
       }
 
-      const isOneAddress = /^0x[a-fA-F0-9]{40}$/.test(addressOrhash);
-      const isHash = /^0x[a-fA-F0-9]{64}$/.test(addressOrhash);
-      if (!isOneAddress && !isHash) {
-        throw new BadRequestException(
-          `Invalid address or hash: ${addressOrhash}`,
-        );
-      }
       const where = {
-        event: {
-          equals: 'Transfer',
-          mode: 'insensitive' as Prisma.QueryMode,
-        },
-        [isOneAddress ? 'address' : 'transactionHash']: addressOrhash,
+        event: 'Transfer',
+        [addressOrhash.type]: addressOrhash.value,
       };
 
       const response = await this.prisma.event.findMany({
-        take,
-        ...(cursor ? { cursor: { eventId: cursor }, skip: 1 } : {}),
+        take: take > 0 ? take + 1 : take - 1,
+        cursor: cursor ? { eventId: cursor } : undefined,
+        skip: cursor ? 1 : undefined,
         where,
         include: {
           address_event_addressToaddress: {
@@ -153,24 +148,36 @@ export class EventsService {
             nextCursor: null,
             prevCursor: cursor || null,
             take,
-            hasMore: false,
+            hasMoreData: false,
           },
           data: [],
         };
       }
 
-      const formattedData = this.formatEvent(response);
-      const nextCursor = formattedData[formattedData.length - 1].eventId;
-      const prevCursor = formattedData[0].eventId;
+      const hasMoreData = response.length > Math.abs(take);
 
-      const hasMore = formattedData.length === Math.abs(take);
+      const paginatedEvents = hasMoreData
+        ? response.slice(0, Math.abs(take))
+        : response;
+
+      const formattedData = this.formatEvent(paginatedEvents);
+
+      const nextCursor =
+        take > 0 && !hasMoreData
+          ? null
+          : formattedData[formattedData.length - 1]?.eventId;
+
+      const prevCursor =
+        !cursor || (take < 0 && !hasMoreData)
+          ? null
+          : formattedData[0]?.eventId;
 
       return {
         paginationEvents: {
           nextCursor,
-          take,
           prevCursor,
-          hasMore,
+          hasMoreData,
+          take,
         },
         data: formattedData,
       };
