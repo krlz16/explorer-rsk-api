@@ -1,42 +1,50 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { EventsService } from './events.service';
+import { AddressValidationPipe } from 'src/common/pipes/address-validation.pipe';
+import { PaginationTakeValidationPipe } from 'src/common/pipes/pagination-take.pipe';
+import {
+  AddressOrHash,
+  AddressOrHashValidationPipe,
+} from 'src/common/pipes/address-or-hash-validation.pipe';
 
 @Controller('events')
 export class EventsController {
   constructor(private eventsService: EventsService) {}
 
+  /**
+   * Fetch a paginated list of events using keyset pagination.
+   * @param {string} address - The address to filter events by.
+   * @param {number} take - Number of records to retrieve.
+   * @param {string} cursor - The eventID to start from (optional).
+   * @returns Paginated events data by address & pagination.
+   */
   @Get('/address/:address')
   getEventsByAddress(
-    @Param('address') address: string,
-    @Param('page_data') page_data: number,
-    @Param('take_data') take_data: number,
+    @Param('address', AddressValidationPipe) address: string,
+    @Query('take', PaginationTakeValidationPipe) take?: number,
+    @Query('cursor') cursor?: string,
   ) {
-    return this.eventsService.getEventsByAddress(address, page_data, take_data);
+    return this.eventsService.getEventsByAddress(address, take, cursor);
   }
 
-  @Get('/tx/:hash')
+  /**
+   * Fetch transfer events by specific tx hash or address.
+   * @param {string} addressOrhash - Transaction hash.
+   * @param {number} take - Number of records to retrieve.
+   * @param {string} cursor - The eventID to start from (optional).
+   * @returns Transfer events data details by Tx Hash or address & pagination.
+   */
+  @Get('/tx/:addressOrhash')
   getEventByTxHash(
-    @Param('hash') hash: string,
-    @Param('page_data') page_data: number,
-    @Param('take_data') take_data: number,
+    @Param('addressOrhash', AddressOrHashValidationPipe)
+    addressOrhash: AddressOrHash,
+    @Query('take', PaginationTakeValidationPipe) take?: number,
+    @Query('cursor') cursor?: string,
   ) {
     return this.eventsService.getTransfersEventByTxHashOrAddress(
-      hash,
-      page_data,
-      take_data,
-    );
-  }
-
-  @Get('/transfer/:address')
-  getTransfersEventByAddress(
-    @Param('address') address: string,
-    @Param('page_data') page_data: number,
-    @Param('take_data') take_data: number,
-  ) {
-    return this.eventsService.getTransfersEventByTxHashOrAddress(
-      address,
-      page_data,
-      take_data,
+      addressOrhash,
+      take,
+      cursor,
     );
   }
 }

@@ -23,7 +23,6 @@ export class BalancesController {
    * @returns Paginated balances data.
    */
   @Get('/address/:address')
-  @UsePipes(new ValidationPipe({ transform: true }))
   getBalanceByAddress(
     @Param('address', AddressValidationPipe) address: string,
     @Query('take', PaginationTakeValidationPipe) take?: number,
