@@ -107,7 +107,6 @@ export class TokensService {
       },
     });
 
-    console.log('response: ', response);
     const formatData = response.map((t) => {
       return {
         address: t.address,

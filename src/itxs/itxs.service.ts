@@ -151,7 +151,11 @@ export class ItxsService {
       internal_transaction.timestamp =
         internal_transaction.timestamp.toString() as unknown as bigint;
 
-      internal_transaction.action = JSON.parse(internal_transaction.action);
+      const action = JSON.parse(internal_transaction.action);
+      action.value = new BigNumber(action.value, 16).dividedBy(1e18).toNumber().toString();
+      action.gas = new BigNumber(action.gas.toString(), 16).toNumber().toString();
+      internal_transaction.action = action;
+      
       return {
         ...result,
         ...internal_transaction,

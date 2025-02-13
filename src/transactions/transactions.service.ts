@@ -168,11 +168,7 @@ export class TransactionsService {
       },
     });
 
-    const formatData = response.map((tx) => {
-      tx.timestamp = tx.timestamp.toString() as unknown as bigint;
-      tx.receipt = JSON.parse(tx.receipt);
-      return tx;
-    });
+    const formatData = this.txParser.formatTxs(response);
 
     return {
       data: formatData,
