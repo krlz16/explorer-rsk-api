@@ -177,6 +177,7 @@ export class EventsService {
               contract_contract_addressToaddress: {
                 select: {
                   symbol: true,
+                  contract_interface: true,
                 },
               },
             },
