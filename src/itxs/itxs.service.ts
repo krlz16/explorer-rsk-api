@@ -83,13 +83,15 @@ export class ItxsService {
       itx.timestamp = itx.timestamp.toString() as unknown as bigint;
       const action = JSON.parse(itx.action);
       action.value = new BigNumber(action.value, 16).dividedBy(1e18);
-      action.gas = new BigNumber(action.gas.toString(), 16).toNumber().toString();
+      action.gas = new BigNumber(action.gas.toString(), 16)
+        .toNumber()
+        .toString();
 
       delete itx.action;
       const data = {
         ...itx,
-        action
-      }
+        action,
+      };
       return data;
     });
 
