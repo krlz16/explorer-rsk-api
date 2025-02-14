@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AddressesService } from './addresses.service';
 import { PrismaService } from 'src/prisma.service';
 import { AddressParserService } from 'src/common/parsers/address-parser.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('AddressesService', () => {
   let service: AddressesService;
