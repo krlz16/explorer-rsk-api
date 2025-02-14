@@ -126,7 +126,7 @@ export class AddressParserService {
     let match: RegExpExecArray | null;
     while ((match = fileRegex.exec(data)) !== null) {
       const fullPath = match[1].trim();
-      const file = fullPath.match(/([^\/]+\.sol)/)[1];
+      const file = fullPath.match(/([^/]+\.sol)/)[1];
       const content = match[2].trim();
       const existFile = resources.find((f) => f.file === file);
       if (!existFile) {

@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { AddressParserService } from 'src/common/parsers/address-parser.service';
 import { PrismaService } from 'src/prisma.service';
-import { TAKE_PAGE_DATA } from 'src/common/constants';
 
 @Injectable()
 export class AddressesService {

@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { Prisma, event } from '@prisma/client';
+import { event } from '@prisma/client';
 import BigNumber from 'bignumber.js';
 import { AddressOrHash } from 'src/common/pipes/address-or-hash-validation.pipe';
 import { PrismaService } from 'src/prisma.service';
