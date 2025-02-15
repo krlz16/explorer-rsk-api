@@ -12,6 +12,7 @@ export class TokenParserService {
       const symbol = item?.contract_contract_addressToaddress.symbol || null;
 
       return {
+        id: item.id,
         name: item.name,
         address: item.address,
         symbol,
