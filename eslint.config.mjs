@@ -10,6 +10,8 @@ export default [
     files: ['**/*.ts'], // Apply these rules only to TypeScript files
     languageOptions: {
       parser: tsparser,
+      ecmaVersion: 'latest',
+      sourceType: 'module',
       parserOptions: {
         project: 'tsconfig.json',
         tsconfigRootDir: import.meta.dirname,
