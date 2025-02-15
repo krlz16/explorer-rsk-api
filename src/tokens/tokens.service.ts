@@ -74,7 +74,7 @@ export class TokensService {
         !cursor || (take < 0 && !hasMoreData) ? null : formattedData[0]?.id;
 
       return {
-        paginationTokens: {
+        paginationData: {
           nextCursor,
           prevCursor,
           take,
