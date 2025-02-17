@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma, event } from '@prisma/client';
-import BigNumber from 'bignumber.js';
 import { EventParserService } from 'src/common/parsers/event-parser.service';
 import { AddressOrHash } from 'src/common/pipes/address-or-hash-validation.pipe';
 import { PrismaService } from 'src/prisma.service';
@@ -104,8 +103,16 @@ export class EventsService {
 
       const formattedData = paginatedEvents.map((e) => {
         e.timestamp = e.timestamp.toString() as unknown as bigint;
-        e.abi = JSON.parse(e.abi);
-        e.args = JSON.parse(e.args);
+        const abi = JSON.parse(e.abi);
+        let args = JSON.parse(e.args);
+        args = abi?.inputs?.map((input, index) => {
+          return {
+            name: input.name,
+            value: args[index], 
+          };
+        });
+        e.abi = abi;
+        e.args = args;
         return e;
       });
 
@@ -155,32 +162,31 @@ export class EventsService {
         );
       }
 
-      const where = {
+      let where: Prisma.eventWhereInput = {
         event: 'Transfer',
-        [addressOrhash.type]: addressOrhash.value,
       };
 
-      const response = await this.prisma.event.findMany({
-        take: take > 0 ? take + 1 : take - 1,
-        cursor: cursor ? { eventId: cursor } : undefined,
-        skip: cursor ? 1 : undefined,
-        where,
-        include: {
-          address_event_addressToaddress: {
-            select: {
-              name: true,
-              contract_contract_addressToaddress: {
-                select: {
-                  symbol: true,
-                },
-              },
+      if (addressOrhash.type === 'address') {
+        where.OR = [
+          {
+            transaction: {
+              from: addressOrhash.value,
             },
           },
-        },
-        orderBy: {
-          eventId: 'desc',
-        },
-      });
+        ];
+      } else {
+        where.transactionHash = addressOrhash.value;
+      }
+
+      let response = await this.findTokensByAddress(where, take, cursor);
+
+      if (response.length === 0 && addressOrhash.type === 'address') {
+        where = {
+          event: 'Transfer',
+          address: addressOrhash.value,
+        }
+        response = await this.findTokensByAddress(where, take, cursor);
+      }
 
       if (response.length <= 0 || !response) {
         return {
@@ -228,5 +234,30 @@ export class EventsService {
       }
       throw new Error(`Failed to fetch events: ${error.message}`);
     }
+  }
+
+  findTokensByAddress(where: Prisma.eventWhereInput, take: number, cursor?: string) {
+    return this.prisma.event.findMany({
+      take: take > 0 ? take + 1 : take - 1,
+      cursor: cursor ? { eventId: cursor } : undefined,
+      skip: cursor ? 1 : undefined,
+      where,
+      include: {
+        address_event_addressToaddress: {
+          select: {
+            name: true,
+            contract_contract_addressToaddress: {
+              select: {
+                symbol: true,
+                contract_interface: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        eventId: 'desc',
+      },
+    });
   }
 }

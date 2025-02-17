@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import BigNumber from 'bignumber.js';
+import { TAKE_PAGE_DATA } from 'src/common/constants';
 import { PaginationService } from 'src/common/pagination/pagination.service';
 import { TokenParserService } from 'src/common/parsers/token-parser.service';
 import { PrismaService } from 'src/prisma.service';
@@ -64,14 +66,41 @@ export class TokensService {
     };
   }
 
-  async getTokenByAddress(tokeAddress: string) {
-    const response = await this.prisma.token_address.findFirst({
+  async getTokenByAddress(address: string) {
+    const response = await this.prisma.token_address.findMany({
+      take: TAKE_PAGE_DATA,
       where: {
-        address: tokeAddress,
+        address: address,
       },
+      distinct: ['contract'],
+      include: {
+        contract_token_address_contractTocontract: {
+          select: {
+            name: true,
+            contract_contract_addressToaddress: {
+              select: {
+                symbol: true,
+                contract_interface: true
+              }
+            }
+          },
+        }
+      },
+      orderBy: {
+        blockNumber: 'desc',
+      }
     });
+    
+    if (!response.length) {
+      return {
+        data: [],
+      };
+    }
+
+    const formattedData = this.tokenParser.formatTokensByAddress(response);
+
     return {
-      data: response,
+      data: formattedData,
     };
   }
 

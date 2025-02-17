@@ -39,7 +39,7 @@ export class EventsController {
    * @param {string} cursor - The eventID to start from (optional).
    * @returns Transfer events data details by Tx Hash or address & pagination.
    */
-  @Get('/tx/:addressOrhash')
+  @Get('/transfer/:addressOrhash')
   getEventByTxHash(
     @Param('addressOrhash', AddressOrHashValidationPipe)
     addressOrhash: AddressOrHash,

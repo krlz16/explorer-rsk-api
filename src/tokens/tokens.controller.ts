@@ -1,5 +1,7 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { TokensService } from './tokens.service';
+import { AddressValidationPipe } from 'src/common/pipes/address-validation.pipe';
+import { BlockIdentifierPipe } from 'src/common/pipes/block-identifier.pipe';
 
 @Controller('tokens')
 export class TokensController {
@@ -13,8 +15,10 @@ export class TokensController {
     return this.tokensService.getTokens(page_data, take_data);
   }
 
-  @Get(':address')
-  getToken(@Param('address') address: string) {
+  @Get('/address/:address')
+  getToken(
+    @Param('address', AddressValidationPipe) address: string,
+  ) {
     return this.tokensService.getTokenByAddress(address);
   }
 

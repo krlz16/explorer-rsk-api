@@ -11,6 +11,7 @@ import { TokenParserService } from 'src/common/parsers/token-parser.service';
     PrismaService,
     PaginationService,
     TokenParserService,
+    TokenParserService,
   ],
   controllers: [TokensController],
 })
