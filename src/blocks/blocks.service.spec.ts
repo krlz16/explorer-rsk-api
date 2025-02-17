@@ -133,7 +133,7 @@ describe('BlocksService', () => {
     const result = await service.getBlocks(2, 98);
 
     expect(result).toEqual({
-      paginationBlocks: {
+      paginationData: {
         nextCursor: 95,
         prevCursor: 100,
         take: 2,
@@ -159,7 +159,7 @@ describe('BlocksService', () => {
     const result = await service.getBlocks(2);
 
     expect(result).toEqual({
-      paginationBlocks: { nextCursor: null, prevCursor: null, take: 2 },
+      paginationData: { nextCursor: null, prevCursor: null, take: 2 },
       data: [],
     });
 
@@ -284,17 +284,5 @@ describe('BlocksService', () => {
     });
 
     expect(prismaMock.block.findFirst).toHaveBeenCalledTimes(1);
-  });
-
-  it('should throw an error for invalid block number', async () => {
-    await expect(service.getBlock(-1)).rejects.toThrow(
-      'Invalid block number: -1. Must be a non-negative integer.',
-    );
-  });
-
-  it('should throw an error for invalid block hash', async () => {
-    await expect(service.getBlock('invalid_hash')).rejects.toThrow(
-      'Invalid block hash format: invalid_hash. Must be a 64-character hex string.',
-    );
   });
 });

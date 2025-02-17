@@ -26,26 +26,6 @@ export class BlocksService {
    */
   async getBlocks(take: number = TAKE_PAGE_DATA, cursor?: number) {
     try {
-      if (take > TAKE_PAGE_DATA) {
-        throw new BadRequestException(
-          `Cannot fetch more than ${TAKE_PAGE_DATA} blocks at a time. Requested: ${take}`,
-        );
-      }
-
-      if (cursor !== undefined) {
-        if (!Number.isInteger(cursor)) {
-          throw new BadRequestException(
-            `Cursor must be an integer. Received: ${cursor}`,
-          );
-        }
-
-        if (cursor < 0) {
-          throw new BadRequestException(
-            `Cursor must be a non-negative integer. Received: ${cursor}`,
-          );
-        }
-      }
-
       if (take < 0 && !cursor) {
         throw new BadRequestException(
           'Cannot paginate backward without a cursor.',
@@ -73,7 +53,7 @@ export class BlocksService {
 
       if (blocks.length === 0) {
         return {
-          paginationBlocks: {
+          paginationData: {
             nextCursor: null,
             prevCursor: cursor || null,
             take,
@@ -103,7 +83,7 @@ export class BlocksService {
           : formattedBlocks[0]?.number;
 
       return {
-        paginationBlocks: {
+        paginationData: {
           nextCursor,
           prevCursor,
           hasMoreData,
@@ -126,30 +106,6 @@ export class BlocksService {
    */
   async getBlock(block: number | string) {
     try {
-      if (typeof block === 'number') {
-        if (!Number.isInteger(block) || block < 0) {
-          throw new BadRequestException(
-            `Invalid block number: ${block}. Must be a non-negative integer.`,
-          );
-        }
-
-        if (block > 2147483647) {
-          throw new BadRequestException(
-            `Block number ${block} exceeds the allowed limit of 2,147,483,647.`,
-          );
-        }
-      } else if (typeof block === 'string') {
-        if (!/^0x[a-fA-F0-9]{64}$/.test(block)) {
-          throw new BadRequestException(
-            `Invalid block hash format: ${block}. Must be a 64-character hex string.`,
-          );
-        }
-      } else {
-        throw new BadRequestException(
-          `Invalid block identifier: ${block}. Must be a number or a hash.`,
-        );
-      }
-
       const blockResponse = await this.prisma.block.findFirst({
         where: typeof block === 'number' ? { number: block } : { hash: block },
       });

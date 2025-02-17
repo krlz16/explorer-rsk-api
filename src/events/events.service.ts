@@ -1,111 +1,199 @@
-import { Injectable } from '@nestjs/common';
-import { Prisma, event } from '@prisma/client';
-import { isAddress } from '@rsksmart/rsk-utils';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { event } from '@prisma/client';
 import BigNumber from 'bignumber.js';
-import { PaginationService } from 'src/common/pagination/pagination.service';
+import { AddressOrHash } from 'src/common/pipes/address-or-hash-validation.pipe';
 import { PrismaService } from 'src/prisma.service';
 
 @Injectable()
 export class EventsService {
-  constructor(
-    private prisma: PrismaService,
-    private pgService: PaginationService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
+  /**
+   * Fetch paginated events per address using keyset pagination.
+   * @param {string} address - The address to filter events by.
+   * @param {number} take - Number of records to retrieve.
+   * @param {string} cursor - The eventID to start from (optional).
+   * @returns Paginated events by address data & pagination.
+   */
+  async getEventsByAddress(address: string, take: number, cursor?: string) {
+    try {
+      if (take < 0 && !cursor) {
+        throw new BadRequestException(
+          'Cannot paginate backward without a cursor.',
+        );
+      }
 
-  async getEventsByAddress(
-    address: string,
-    page_data: number,
-    take_data: number,
-  ) {
-    const where = {
-      address_in_event: {
-        some: {
-          address,
-        },
-      },
-    };
-    const count = await this.prisma.event.count({ where });
-
-    const pagination = this.pgService.paginate({
-      page_data,
-      take_data,
-      count,
-    });
-    const response = await this.prisma.event.findMany({
-      take: pagination.take,
-      skip: pagination.skip,
-      where,
-      include: {
-        address_in_event: {
-          select: {
-            address: true,
-            isEventEmitterAddress: true,
+      const response = await this.prisma.event.findMany({
+        take: take > 0 ? take + 1 : take - 1,
+        cursor: cursor ? { eventId: cursor } : undefined,
+        skip: cursor ? 1 : undefined,
+        where: {
+          address_in_event: {
+            some: { address },
           },
         },
-      },
-      orderBy: {
-        eventId: 'desc',
-      },
-    });
+        include: {
+          address_in_event: {
+            select: {
+              address: true,
+              isEventEmitterAddress: true,
+            },
+          },
+        },
+        orderBy: {
+          eventId: 'desc',
+        },
+      });
 
-    const formatData = response.map((e) => {
-      e.timestamp = e.timestamp.toString() as unknown as bigint;
-      e.abi = JSON.parse(e.abi);
-      e.args = JSON.parse(e.args);
-      return e;
-    });
+      if (response.length <= 0) {
+        return {
+          paginationEvents: {
+            nextCursor: null,
+            prevCursor: cursor || null,
+            take,
+            hasMoreData: false,
+          },
+          data: [],
+        };
+      }
 
-    return {
-      pagination,
-      data: formatData,
-    };
+      const hasMoreData = response.length > Math.abs(take);
+
+      const paginatedEvents = hasMoreData
+        ? response.slice(0, Math.abs(take))
+        : response;
+
+      const formattedData = paginatedEvents.map((e) => {
+        e.timestamp = e.timestamp.toString() as unknown as bigint;
+        e.abi = JSON.parse(e.abi);
+        e.args = JSON.parse(e.args);
+        return e;
+      });
+
+      const nextCursor =
+        take > 0 && !hasMoreData
+          ? null
+          : formattedData[formattedData.length - 1]?.eventId;
+
+      const prevCursor =
+        !cursor || (take < 0 && !hasMoreData)
+          ? null
+          : formattedData[0]?.eventId;
+
+      return {
+        paginationEvents: {
+          nextCursor,
+          prevCursor,
+          take,
+          hasMoreData,
+        },
+        data: formattedData,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new Error(`Failed to fetch events: ${error.message}`);
+    }
   }
 
+  /**
+   * Fetch transfer events by specific tx hash or address.
+   * @param {string} addressOrhash - Transaction hash or address.
+   * @param {number} take - Number of records to retrieve.
+   * @param {string} cursor - The eventID to start from (optional).
+   * @returns Event details.
+   */
   async getTransfersEventByTxHashOrAddress(
-    addressOrhash: string,
-    page_data: number,
-    take_data: number,
+    addressOrhash: AddressOrHash,
+    take: number,
+    cursor?: string,
   ) {
-    const isOneAddress = isAddress(addressOrhash);
+    try {
+      if (take < 0 && !cursor) {
+        throw new BadRequestException(
+          'Cannot paginate backward without a cursor.',
+        );
+      }
 
-    const where = {
-      event: {
-        equals: 'Transfer',
-        mode: 'insensitive' as Prisma.QueryMode,
-      },
-      [isOneAddress ? 'address' : 'transactionHash']: addressOrhash,
-    };
+      const where = {
+        event: 'Transfer',
+        [addressOrhash.type]: addressOrhash.value,
+      };
 
-    const count = await this.prisma.event.count({ where });
-
-    const pagination = this.pgService.paginate({
-      page_data,
-      take_data,
-      count,
-    });
-    const response = await this.prisma.event.findMany({
-      where,
-      include: {
-        address_event_addressToaddress: {
-          select: {
-            name: true,
-            contract_contract_addressToaddress: {
-              select: {
-                symbol: true,
+      const response = await this.prisma.event.findMany({
+        take: take > 0 ? take + 1 : take - 1,
+        cursor: cursor ? { eventId: cursor } : undefined,
+        skip: cursor ? 1 : undefined,
+        where,
+        include: {
+          address_event_addressToaddress: {
+            select: {
+              name: true,
+              contract_contract_addressToaddress: {
+                select: {
+                  symbol: true,
+                },
               },
             },
           },
         },
-      },
-    });
+        orderBy: {
+          eventId: 'desc',
+        },
+      });
 
-    const formattedData = this.formatEvent(response);
-    return {
-      pagination,
-      data: formattedData,
-    };
+      if (response.length <= 0 || !response) {
+        return {
+          paginationEvents: {
+            nextCursor: null,
+            prevCursor: cursor || null,
+            take,
+            hasMoreData: false,
+          },
+          data: [],
+        };
+      }
+
+      const hasMoreData = response.length > Math.abs(take);
+
+      const paginatedEvents = hasMoreData
+        ? response.slice(0, Math.abs(take))
+        : response;
+
+      const formattedData = this.formatEvent(paginatedEvents);
+
+      const nextCursor =
+        take > 0 && !hasMoreData
+          ? null
+          : formattedData[formattedData.length - 1]?.eventId;
+
+      const prevCursor =
+        !cursor || (take < 0 && !hasMoreData)
+          ? null
+          : formattedData[0]?.eventId;
+
+      return {
+        paginationEvents: {
+          nextCursor,
+          prevCursor,
+          hasMoreData,
+          take,
+        },
+        data: formattedData,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new Error(`Failed to fetch events: ${error.message}`);
+    }
   }
 
+  /**
+   * Format event data.
+   * @param {event[]} events - Event data to format.
+   * @returns Formatted event data.
+   */
   formatEvent(events: event[] | unknown[]) {
     const formattedData = events.map((e) => {
       e.timestamp = e.timestamp.toString() as unknown as bigint;
@@ -129,7 +217,6 @@ export class EventsService {
         contrant_detail,
       };
     });
-
     return formattedData;
   }
 }
