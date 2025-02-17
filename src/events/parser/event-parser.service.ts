@@ -6,7 +6,14 @@ import BigNumber from 'bignumber.js';
 export class EventParserService {
   constructor() {}
 
-  formatOneEvent(event: event | any, eventId: string) {
+  /**
+   * Format event data.
+   * @param {event} event - Event data to format.
+   * @returns Formatted event data.
+   */
+  formatOneEvent(event: event | any) {
+    if (!event) return null;
+
     event.timestamp = event.timestamp.toString() as unknown as bigint;
     event.transaction.timestamp =
       event.transaction.timestamp.toString() as unknown as bigint;
@@ -18,7 +25,7 @@ export class EventParserService {
       .dividedBy(1e18)
       .toNumber()
       .toString();
-    const log = receipt?.logs?.filter((l) => l.eventId === eventId);
+    const log = receipt?.logs?.filter((l) => l.eventId === event.eventId);
     receipt.logs = log;
     event.transaction.receipt = receipt;
     const contrant_detail = {
@@ -40,6 +47,7 @@ export class EventParserService {
    * @returns Formatted event data.
    */
   formatTransferEvent(events: event[] | unknown[]) {
+    if (events?.length === 0 || events === null) return null;
     const formattedData = events.map((e) => {
       e.timestamp = e.timestamp.toString() as unknown as bigint;
       e.args = JSON.parse(e.args);

@@ -1,7 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { event } from '@prisma/client';
-import BigNumber from 'bignumber.js';
-import { EventParserService } from 'src/common/parsers/event-parser.service';
+import { EventParserService } from 'src/events/parser/event-parser.service';
 import { AddressOrHash } from 'src/common/pipes/address-or-hash-validation.pipe';
 import { PrismaService } from 'src/prisma.service';
 
@@ -12,45 +10,56 @@ export class EventsService {
     private eventParser: EventParserService,
   ) {}
 
-   /**
+  /**
    * Fetch transfer events by ID.
    * @param {string} eventId - Event ID.
    * @returns Transfer events details, including token deatils and transactions details.
    */
   async getEventById(eventId: string) {
-    const response = await this.prisma.event.findFirst({
-      where: {
-        eventId,
-      },
-      include: {
-        address_event_addressToaddress: {
-          select: {
-            name: true,
-            address: true,
-            contract_contract_addressToaddress: {
-              select: {
-                symbol: true,
+    try {
+      if (!eventId) {
+        throw new BadRequestException('EventId is required');
+      }
+      const response = await this.prisma.event.findFirst({
+        where: {
+          eventId,
+        },
+        include: {
+          address_event_addressToaddress: {
+            select: {
+              name: true,
+              address: true,
+              contract_contract_addressToaddress: {
+                select: {
+                  symbol: true,
+                },
               },
             },
           },
+          transaction: true,
         },
-        transaction: true,
-      },
-      orderBy: {
-        eventId: 'desc',
-      },
-    });
+        orderBy: {
+          eventId: 'desc',
+        },
+      });
 
-    if (!response) {
+      console.log('response: aqui', response);
+      if (!response) {
+        return {
+          data: null,
+        };
+      }
+
+      const formattedData = this.eventParser.formatOneEvent(response);
       return {
-        data: null,
+        data: formattedData,
       };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new Error(`Failed to fetch event by Id: ${error.message}`);
     }
-
-    const formattedData = this.eventParser.formatOneEvent(response, eventId);
-    return {
-      data: formattedData,
-    };
   }
   /**
    * Fetch paginated events per address using keyset pagination.

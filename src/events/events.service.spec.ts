@@ -2,24 +2,32 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EventsService } from './events.service';
 import { PrismaService } from 'src/prisma.service';
 import { PaginationService } from 'src/common/pagination/pagination.service';
+import { EventParserService } from 'src/events/parser/event-parser.service';
 
 describe('EventsService', () => {
   let service: EventsService;
   let prismaMock: PrismaService;
   let paginationMock: PaginationService;
+  let eventParserMock: EventParserService;
 
   beforeEach(async () => {
     prismaMock = {
       event: {
         findMany: jest.fn(),
+        findFirst: jest.fn(),
       },
     } as unknown as PrismaService;
+
+    eventParserMock = {
+      formatOneEvent: jest.fn(),
+    } as unknown as EventParserService;
 
     paginationMock = {} as PaginationService;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EventsService,
+        EventParserService,
         {
           provide: PrismaService,
           useValue: prismaMock,
@@ -321,5 +329,71 @@ describe('EventsService', () => {
         2,
       ),
     ).rejects.toThrow('Failed to fetch events: Database error');
+  });
+
+  // Tests for getEventById
+  it('should return event by a valid eventId', async () => {
+    const mockEvents = {
+      eventId: '02c9f0e00300545ccbc4385f86af73db',
+      timestamp: '1655296889',
+      abi: '{}',
+      args: '["0x6306395B37120b1114EF08ee160f7C2f3a263558", "0xa84D2210a4D1809Bba68Db57008686FFCE03b141", "1000000000000000000"]',
+      event: 'Transfer',
+      transactionIndex: 3,
+      txStatus: '0x1',
+      address_event_addressToaddress: {
+        name: 'IToken',
+        address: '0x123',
+        contract_contract_addressToaddress: { symbol: 'ITK' },
+      },
+      transaction: {
+        timestamp: '1655296889',
+        value: '0x3e252e0',
+        receipt: `{
+          "logs": [
+            {
+              "logIndex": 5,
+              "blockNumber": 2924302,
+              "transactionIndex": 3,
+              "address": "0x69fe5cec81d5ef92600c1a0db1f11986ab3758ab",
+              "eventId": "02c9f0e00300545ccbc4385f86af73db",
+              "timestamp": 1655296889,
+              "txStatus": "0x1"
+            }
+          ]
+        }`,
+      },
+    };
+
+    (prismaMock.event.findFirst as jest.Mock).mockResolvedValue(mockEvents);
+    (eventParserMock.formatOneEvent as jest.Mock).mockReturnValue(mockEvents);
+
+    const result = await service.getEventById(
+      '02c9f0e00300545ccbc4385f86af73db',
+    );
+    expect(result.data.eventId).toBe('02c9f0e00300545ccbc4385f86af73db');
+    expect(result.data.transaction.receipt.logs[0].eventId).toBe(
+      '02c9f0e00300545ccbc4385f86af73db',
+    );
+    expect(result.data.contrant_detail.name).toBe('IToken');
+    expect(result.data.contrant_detail.symbol).toBe('ITK');
+  });
+
+  it('Should return null response if event does not exist', async () => {
+    (prismaMock.event.findFirst as jest.Mock).mockResolvedValue(null);
+
+    const result = await service.getEventById('02c9f0e00');
+
+    expect(result).toEqual({
+      data: null,
+    });
+  });
+
+  it('Should return an error when eventId is missing', async () => {
+    (prismaMock.event.findFirst as jest.Mock).mockRejectedValue(null);
+
+    await expect(service.getEventById('')).rejects.toThrow(
+      'EventId is required',
+    );
   });
 });
