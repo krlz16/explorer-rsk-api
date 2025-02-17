@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { Prisma, event } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { EventParserService } from 'src/common/parsers/event-parser.service';
 import { AddressOrHash } from 'src/common/pipes/address-or-hash-validation.pipe';
 import { PrismaService } from 'src/prisma.service';
@@ -108,7 +108,7 @@ export class EventsService {
         args = abi?.inputs?.map((input, index) => {
           return {
             name: input.name,
-            value: args[index], 
+            value: args[index],
           };
         });
         e.abi = abi;
@@ -184,7 +184,7 @@ export class EventsService {
         where = {
           event: 'Transfer',
           address: addressOrhash.value,
-        }
+        };
         response = await this.findTokensByAddress(where, take, cursor);
       }
 
@@ -236,7 +236,11 @@ export class EventsService {
     }
   }
 
-  findTokensByAddress(where: Prisma.eventWhereInput, take: number, cursor?: string) {
+  findTokensByAddress(
+    where: Prisma.eventWhereInput,
+    take: number,
+    cursor?: string,
+  ) {
     return this.prisma.event.findMany({
       take: take > 0 ? take + 1 : take - 1,
       cursor: cursor ? { eventId: cursor } : undefined,

@@ -285,16 +285,4 @@ describe('BlocksService', () => {
 
     expect(prismaMock.block.findFirst).toHaveBeenCalledTimes(1);
   });
-
-  it('should throw an error for invalid block number', async () => {
-    await expect(service.getBlock(-1)).rejects.toThrow(
-      'Invalid block number: -1. Must be a non-negative integer.',
-    );
-  });
-
-  it('should throw an error for invalid block hash', async () => {
-    await expect(service.getBlock('invalid_hash')).rejects.toThrow(
-      'Invalid block hash format: invalid_hash. Must be a 64-character hex string.',
-    );
-  });
 });

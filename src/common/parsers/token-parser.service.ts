@@ -11,14 +11,21 @@ export class TokenParserService {
       const { balance, blockNumber } =
         item.address_latest_balance_address_latest_balance_addressToaddress;
 
-      const symbol = item?.contract_contract_addressToaddress.symbol || null;
+      const symbol =
+        item?.contract_contract_addressToaddress.symbol || '(Not provided)';
 
-      const balanceValue = new BigNumber(balance, 16).dividedBy(1e18).toNumber();
+      const name = item?.name || '(Not provided)';
+
+      const balanceFormatted = balance
+        ? new BigNumber(balance, 16).dividedBy(1e18).toNumber()
+        : 0;
+
       return {
-        name: item.name,
+        id: item.id,
+        name,
         address: item.address,
         symbol,
-        balance: balanceValue,
+        balance: balanceFormatted,
         blockNumber,
       };
     });
@@ -33,11 +40,14 @@ export class TokenParserService {
       item.balance = balance;
       delete item.contract_token_address_contractTocontract;
       return {
-        contract_interface: contract?.contract_contract_addressToaddress.contract_interface?.map((i) => i.interface),
+        contract_interface:
+          contract?.contract_contract_addressToaddress.contract_interface?.map(
+            (i) => i.interface,
+          ),
         symbol: contract?.contract_contract_addressToaddress.symbol,
         name: contract?.name,
-        ...item
-      }
+        ...item,
+      };
     });
 
     return formattedData;

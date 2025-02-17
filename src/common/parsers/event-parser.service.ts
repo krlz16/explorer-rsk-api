@@ -1,6 +1,6 @@
-import { Injectable } from "@nestjs/common";
-import { event } from "@prisma/client";
-import BigNumber from "bignumber.js";
+import { Injectable } from '@nestjs/common';
+import { event } from '@prisma/client';
+import BigNumber from 'bignumber.js';
 
 @Injectable()
 export class EventParserService {
@@ -8,9 +8,13 @@ export class EventParserService {
 
   formatOneEvent(event: event | any, eventId: string) {
     event.timestamp = event.timestamp.toString() as unknown as bigint;
-    event.transaction.timestamp = event.transaction.timestamp.toString() as unknown as bigint;
+    event.transaction.timestamp =
+      event.transaction.timestamp.toString() as unknown as bigint;
     const receipt = JSON.parse(event.transaction.receipt);
-    event.transaction.value = new BigNumber(event.transaction.value.toString(), 16)
+    event.transaction.value = new BigNumber(
+      event.transaction.value.toString(),
+      16,
+    )
       .dividedBy(1e18)
       .toNumber()
       .toString();
@@ -27,7 +31,7 @@ export class EventParserService {
     return {
       ...event,
       contrant_detail,
-    }
+    };
   }
 
   formatTransferEvent(events: event[] | unknown[]) {
@@ -46,7 +50,9 @@ export class EventParserService {
           e.address_event_addressToaddress.contract_contract_addressToaddress
             .symbol,
       };
-      const contract_interface = e?.address_event_addressToaddress.contract_contract_addressToaddress?.contract_interface;
+      const contract_interface =
+        e?.address_event_addressToaddress.contract_contract_addressToaddress
+          ?.contract_interface;
       delete e.address_event_addressToaddress;
       return {
         ...e,

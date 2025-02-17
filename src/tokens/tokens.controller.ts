@@ -1,7 +1,9 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { TokensService } from './tokens.service';
+import { PaginationTakeValidationPipe } from 'src/common/pipes/pagination-take.pipe';
+import { PaginationCursorValidationPipe } from 'src/common/pipes/pagination-cursor.pipe';
 import { AddressValidationPipe } from 'src/common/pipes/address-validation.pipe';
-import { BlockIdentifierPipe } from 'src/common/pipes/block-identifier.pipe';
+import { GetTokenByNameOrSymbolParams } from './dto/get-token-by-name-or-symbol.dto';
 
 @Controller('tokens')
 export class TokensController {
@@ -9,21 +11,19 @@ export class TokensController {
 
   @Get()
   getTokens(
-    @Query('page_data') page_data: number,
-    @Query('take_data') take_data: number,
+    @Query('take', PaginationTakeValidationPipe) take?: number,
+    @Query('cursor', PaginationCursorValidationPipe) cursor?: number,
   ) {
-    return this.tokensService.getTokens(page_data, take_data);
+    return this.tokensService.getTokens(take, cursor);
   }
 
   @Get('/address/:address')
-  getToken(
-    @Param('address', AddressValidationPipe) address: string,
-  ) {
+  getToken(@Param('address', AddressValidationPipe) address: string) {
     return this.tokensService.getTokenByAddress(address);
   }
 
   @Get('/search/:value')
-  getTokenByNameOrSymbol(@Param('value') value: string) {
-    return this.tokensService.getTokenByNameOrSymbol(value);
+  getTokenByNameOrSymbol(@Param() params: GetTokenByNameOrSymbolParams) {
+    return this.tokensService.getTokenByNameOrSymbol(params.value);
   }
 }

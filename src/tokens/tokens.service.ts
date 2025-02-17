@@ -1,7 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import BigNumber from 'bignumber.js';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { TAKE_PAGE_DATA } from 'src/common/constants';
-import { PaginationService } from 'src/common/pagination/pagination.service';
 import { TokenParserService } from 'src/common/parsers/token-parser.service';
 import { PrismaService } from 'src/prisma.service';
 
@@ -9,143 +7,183 @@ import { PrismaService } from 'src/prisma.service';
 export class TokensService {
   constructor(
     private prisma: PrismaService,
-    private pgService: PaginationService,
     private tokenParser: TokenParserService,
   ) {}
 
-  async getTokens(page_data: number, take_data: number) {
-    const where = {
-      type: 'contract',
-      contract_contract_addressToaddress: {
-        contract_interface: {
-          some: {
-            interface: {
-              in: ['ERC20', 'ERC677', 'ERC721'],
+  async getTokens(take: number, cursor?: number) {
+    try {
+      if (take < 0 && !cursor) {
+        throw new BadRequestException(
+          'Cannot paginate backward without a cursor.',
+        );
+      }
+
+      const where = {
+        type: 'contract',
+        contract_contract_addressToaddress: {
+          contract_interface: {
+            some: {
+              interface: {
+                in: ['ERC20', 'ERC677', 'ERC721'],
+              },
             },
           },
         },
-      },
-    };
-    const count = await this.prisma.address.count({ where });
-    const pagination = this.pgService.paginate({
-      page_data,
-      take_data,
-      count,
-    });
+      };
 
-    const response = await this.prisma.address.findMany({
-      take: pagination.take,
-      skip: pagination.skip,
-      where,
-      select: {
-        address: true,
-        name: true,
-        type: true,
-        contract_contract_addressToaddress: {
-          select: {
-            symbol: true,
+      const response = await this.prisma.address.findMany({
+        take: take > 0 ? take + 1 : take - 1,
+        cursor: cursor ? { id: cursor } : undefined,
+        skip: cursor ? 1 : undefined,
+        where,
+        select: {
+          id: true,
+          address: true,
+          name: true,
+          type: true,
+          contract_contract_addressToaddress: {
+            select: {
+              symbol: true,
+            },
+          },
+          address_latest_balance_address_latest_balance_addressToaddress: {
+            select: {
+              balance: true,
+              blockNumber: true,
+            },
           },
         },
-        address_latest_balance_address_latest_balance_addressToaddress: {
-          select: {
-            balance: true,
-            blockNumber: true,
-          },
+        orderBy: {
+          id: 'desc',
         },
-      },
-      orderBy: {
-        id: 'desc',
-      },
-    });
+      });
 
-    const formattedData = this.tokenParser.formatTokens(response);
+      const hasMoreData = response.length > Math.abs(take);
 
-    return {
-      pagination,
-      data: formattedData,
-    };
+      const paginatedTokens = hasMoreData
+        ? response.slice(0, Math.abs(take))
+        : response;
+
+      const formattedData = this.tokenParser.formatTokens(paginatedTokens);
+
+      const nextCursor =
+        take > 0 && !hasMoreData
+          ? null
+          : formattedData[formattedData.length - 1]?.id;
+
+      const prevCursor =
+        !cursor || (take < 0 && !hasMoreData) ? null : formattedData[0]?.id;
+
+      return {
+        paginationData: {
+          nextCursor,
+          prevCursor,
+          take,
+          hasMoreData,
+        },
+        data: formattedData,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new Error(`Failed to fetch tokens: ${error.message}`);
+    }
   }
 
   async getTokenByAddress(address: string) {
-    const response = await this.prisma.token_address.findMany({
-      take: TAKE_PAGE_DATA,
-      where: {
-        address: address,
-      },
-      distinct: ['contract'],
-      include: {
-        contract_token_address_contractTocontract: {
-          select: {
-            name: true,
-            contract_contract_addressToaddress: {
-              select: {
-                symbol: true,
-                contract_interface: true
-              }
-            }
+    try {
+      const response = await this.prisma.token_address.findMany({
+        take: TAKE_PAGE_DATA,
+        where: {
+          address: address,
+        },
+        distinct: ['contract'],
+        include: {
+          contract_token_address_contractTocontract: {
+            select: {
+              name: true,
+              contract_contract_addressToaddress: {
+                select: {
+                  symbol: true,
+                  contract_interface: true,
+                },
+              },
+            },
           },
-        }
-      },
-      orderBy: {
-        blockNumber: 'desc',
+        },
+        orderBy: {
+          blockNumber: 'desc',
+        },
+      });
+
+      if (!response.length) {
+        return {
+          data: [],
+        };
       }
-    });
-    
-    if (!response.length) {
+      const formattedData = this.tokenParser.formatTokensByAddress(response);
+
       return {
-        data: [],
+        data: formattedData,
       };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new Error(`Failed to fetch tokens: ${error.message}`);
     }
-
-    const formattedData = this.tokenParser.formatTokensByAddress(response);
-
-    return {
-      data: formattedData,
-    };
   }
 
   async getTokenByNameOrSymbol(value: string) {
-    const response = await this.prisma.address.findMany({
-      take: 20,
-      where: {
-        OR: [
-          {
-            name: {
-              contains: value,
-              mode: 'insensitive',
-            },
-          },
-          {
-            contract_contract_addressToaddress: {
-              symbol: {
+    try {
+      const response = await this.prisma.address.findMany({
+        take: 20,
+        where: {
+          OR: [
+            {
+              name: {
                 contains: value,
                 mode: 'insensitive',
               },
             },
-          },
-        ],
-      },
-      select: {
-        address: true,
-        name: true,
-        contract_contract_addressToaddress: {
-          select: {
-            symbol: true,
+            {
+              contract_contract_addressToaddress: {
+                symbol: {
+                  contains: value,
+                  mode: 'insensitive',
+                },
+              },
+            },
+          ],
+        },
+        select: {
+          address: true,
+          name: true,
+          contract_contract_addressToaddress: {
+            select: {
+              symbol: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    const formatData = response.map((t) => {
+      const formatData = response.map((t) => {
+        return {
+          address: t.address,
+          name: t.name,
+          symbol: t.contract_contract_addressToaddress.symbol,
+        };
+      });
+
       return {
-        address: t.address,
-        name: t.name,
-        symbol: t.contract_contract_addressToaddress.symbol,
+        data: formatData,
       };
-    });
-
-    return {
-      data: formatData,
-    };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new Error(`Failed to fetch tokens: ${error.message}`);
+    }
   }
 }
