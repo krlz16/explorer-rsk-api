@@ -2,8 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EventsService } from './events.service';
 import { PrismaService } from 'src/prisma.service';
 import { PaginationService } from 'src/common/pagination/pagination.service';
-import { BadRequestException } from '@nestjs/common';
-import { AddressOrHash } from 'src/common/pipes/address-or-hash-validation.pipe';
 
 describe('EventsService', () => {
   let service: EventsService;
@@ -271,16 +269,6 @@ describe('EventsService', () => {
       },
       data: [],
     });
-  });
-
-  it('should throw an error if the hash or address is invalid', async () => {
-    const invalidInputs = [
-      '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcde',
-      '0xZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ',
-      '',
-      null,
-      undefined,
-    ];
   });
 
   it('should return transfer events when querying by valid address', async () => {
