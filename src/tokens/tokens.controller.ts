@@ -18,8 +18,12 @@ export class TokensController {
   }
 
   @Get(':address')
-  getToken(@Param('address', AddressValidationPipe) address: string) {
-    return this.tokensService.getTokenByAddress(address);
+  getToken(
+    @Param('address', AddressValidationPipe) address: string,
+    @Query('take', PaginationTakeValidationPipe) take?: number,
+    @Query('cursor') cursor?: string,
+  ) {
+    return this.tokensService.getTokenByAddress(address, take, cursor);
   }
 
   @Get('/search/:value')
