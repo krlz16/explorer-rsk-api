@@ -147,8 +147,10 @@ export class TokensService {
         balance: new BigNumber(token.balance)
           .dividedBy(10 ** (token.contract_details?.decimals || 18))
           .toString(),
-        name: token.contract_token_address_contractTocontract?.name || null,
-        symbol: token.contract_details?.symbol || null,
+        name:
+          token.contract_token_address_contractTocontract?.name ||
+          '(Not provided)',
+        symbol: token.contract_details?.symbol || '(Not provided)',
         decimals: token.contract_details?.decimals || 18,
       }));
 
