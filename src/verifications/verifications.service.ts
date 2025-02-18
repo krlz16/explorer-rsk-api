@@ -77,6 +77,10 @@ export class VerificationsService {
       const result = await response.json();
       const match = await this.checkResult(result);
       let saveNewItem: any;
+
+      //Extract sources
+      const sources = this.extractUsedSourcesFromRequest(dataParsed, result);
+
       if (match) {
         saveNewItem = await this.prisma.verification_result.create({
           data: {
@@ -86,7 +90,7 @@ export class VerificationsService {
             match: match,
             request: data,
             result: JSON.stringify(result),
-            sources: JSON.stringify(result.usedSources),
+            sources: JSON.stringify(sources),
             timestamp: Date.now(),
           },
         });
@@ -120,11 +124,68 @@ export class VerificationsService {
       if (!resultBytecodeHash) return false;
       return resultBytecodeHash === bytecodeHash;
     } catch (err) {
-      return false;
+      throw new Error(`Error checking results: ${err.message}`);
     }
   }
   private isValidVersion(version: string): boolean {
     const solidityVersionRegex = /^\d+\.\d+\.\d+$/;
     return solidityVersionRegex.test(version);
+  }
+  private extractUsedSourcesFromRequest(
+    { source, imports, sources, name }: VerifyRequestDto,
+    { usedSources },
+  ) {
+    if (!sources) {
+      // solidity source file verification method
+      const sourceData = imports[0];
+      // fix it with hash
+      if (source === sourceData.contents) {
+        sourceData.file = sourceData.name;
+        usedSources.unshift(sourceData);
+      }
+      // replaces paths in in imports
+      imports = imports.map((i) => {
+        let { name, contents } = i;
+        usedSources.forEach((s) => {
+          let { file } = s;
+          contents = contents
+            .split('\n')
+            .map((line) => this.replaceImport(line, file))
+            .join('\n');
+        });
+        return { contents, name };
+      });
+
+      return usedSources.map((s) => {
+        let { file: name } = s;
+        let imp = imports.find((i) => i.name === name);
+        const { contents } = imp;
+        return { name, contents };
+      });
+    } else {
+      // standard json input verification method
+      const sourcesToSave = [];
+      usedSources.forEach((s) => {
+        const { file, path } = s;
+
+        const sourceFile = sources[path];
+        const { content: contents } = sourceFile;
+
+        if (file.split('.')[0] === name) {
+          // is the main contract
+          sourcesToSave.unshift({ name: file, contents });
+        } else {
+          sourcesToSave.push({ name: file, contents });
+        }
+      });
+
+      return sourcesToSave;
+    }
+  }
+  private replaceImport(content: string, name: string) {
+    const re = new RegExp(`^import\\s*"([A-Za-z-0-9_\\/\\.]*(/${name}))";$`);
+    return content.replace(re, function (a, b) {
+      return a.replace(b, `./${name}`);
+    });
   }
 }

@@ -33,6 +33,10 @@ export class ImportDto {
 
   @IsString()
   contents: string;
+
+  @IsOptional()
+  @IsString()
+  file?: string;
 }
 
 class SourceDto {
