@@ -148,9 +148,11 @@ export class TokensService {
         contract: token.contract,
         blockNumber: token.blockNumber,
         blockHash: token.blockHash,
-        balance: new BigNumber(token.balance)
-          .dividedBy(10 ** (token.contract_details?.decimals || 18))
-          .toString(),
+        balance: token.balance
+          ? new BigNumber(token.balance)
+              .dividedBy(10 ** (token.contract_details?.decimals || 18))
+              .toString()
+          : '0',
         name:
           token.contract_token_address_contractTocontract?.name ||
           '(Not provided)',
