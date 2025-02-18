@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import BigNumber from 'bignumber.js';
 import { TokenParserService } from 'src/common/parsers/token-parser.service';
 import { PrismaService } from 'src/prisma.service';
 
@@ -100,7 +101,7 @@ export class TokensService {
 
       const parsedCursor = this.decodeCursor(cursor);
 
-      const latestTokenAddresses = await this.prisma.token_address.findMany({
+      const tokensWithDetails = await this.prisma.token_address.findMany({
         take: take > 0 ? take + 1 : take - 1,
         cursor: cursor
           ? {
@@ -111,24 +112,45 @@ export class TokensService {
             }
           : undefined,
         skip: cursor ? 1 : undefined,
-        where: {
-          address: tokenAddress,
-        },
+        where: { address: tokenAddress },
         orderBy: [
           { contract: 'asc' },
           { blockNumber: take > 0 ? 'desc' : 'asc' },
         ],
+        include: {
+          contract_token_address_contractTocontract: {
+            select: {
+              name: true,
+            },
+          },
+          contract_details: {
+            select: {
+              symbol: true,
+              decimals: true,
+            },
+          },
+        },
         distinct: ['contract'],
       });
 
-      const hasMoreData = latestTokenAddresses.length > Math.abs(take);
-
-      console.log('hasMoreData', hasMoreData);
-      console.log(latestTokenAddresses);
+      const hasMoreData = tokensWithDetails.length > Math.abs(take);
 
       const paginatedResults = hasMoreData
-        ? latestTokenAddresses.slice(0, Math.abs(take))
-        : latestTokenAddresses;
+        ? tokensWithDetails.slice(0, Math.abs(take))
+        : tokensWithDetails;
+
+      const formattedData = paginatedResults.map((token) => ({
+        address: token.address,
+        contract: token.contract,
+        blockNumber: token.blockNumber,
+        blockHash: token.blockHash,
+        balance: new BigNumber(token.balance)
+          .dividedBy(10 ** (token.contract_details?.decimals || 18))
+          .toString(),
+        name: token.contract_token_address_contractTocontract?.name || null,
+        symbol: token.contract_details?.symbol || null,
+        decimals: token.contract_details?.decimals || 18,
+      }));
 
       const nextCursor =
         take > 0 && !hasMoreData
@@ -147,13 +169,8 @@ export class TokensService {
             );
 
       return {
-        paginatedData: {
-          nextCursor,
-          prevCursor,
-          take,
-          hasMoreData,
-        },
-        data: paginatedResults,
+        paginationData: { nextCursor, prevCursor, take, hasMoreData },
+        data: formattedData,
       };
     } catch (error) {
       if (error instanceof BadRequestException) {
