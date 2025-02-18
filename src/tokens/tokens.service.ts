@@ -91,7 +91,11 @@ export class TokensService {
     }
   }
 
-  async getTokenByAddress(tokenAddress: string, take: number, cursor?: string) {
+  async getTokensByAddress(
+    tokenAddress: string,
+    take: number,
+    cursor?: string,
+  ) {
     try {
       if (take < 0 && !cursor) {
         throw new BadRequestException(

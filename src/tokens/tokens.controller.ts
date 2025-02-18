@@ -23,7 +23,7 @@ export class TokensController {
     @Query('take', PaginationTakeValidationPipe) take?: number,
     @Query('cursor') cursor?: string,
   ) {
-    return this.tokensService.getTokenByAddress(address, take, cursor);
+    return this.tokensService.getTokensByAddress(address, take, cursor);
   }
 
   @Get('/search/:value')
