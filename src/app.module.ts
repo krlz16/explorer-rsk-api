@@ -11,6 +11,7 @@ import { ItxsModule } from './itxs/itxs.module';
 import { StatsModule } from './stats/stats.module';
 import { EventsModule } from './events/events.module';
 import { BalancesModule } from './balances/balances.module';
+import { AccountsModule } from './accounts/accounts.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { BalancesModule } from './balances/balances.module';
     StatsModule,
     EventsModule,
     BalancesModule,
+    AccountsModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
