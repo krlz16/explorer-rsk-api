@@ -41,6 +41,7 @@ export class VerificationsService {
             'Error, missing sources or settings in file',
           );
         }
+        dataParsed.sources = JSON.stringify(sources);
       } else {
         if (!dataParsed.source) {
           throw new BadRequestException(
@@ -164,11 +165,11 @@ export class VerificationsService {
       });
     } else {
       // standard json input verification method
+      const sourcesParsed = JSON.parse(sources);
       const sourcesToSave = [];
       usedSources.forEach((s) => {
         const { file, path } = s;
-
-        const sourceFile = sources[path];
+        const sourceFile = sourcesParsed[path];
         const { content: contents } = sourceFile;
 
         if (file.split('.')[0] === name) {
@@ -178,7 +179,6 @@ export class VerificationsService {
           sourcesToSave.push({ name: file, contents });
         }
       });
-
       return sourcesToSave;
     }
   }

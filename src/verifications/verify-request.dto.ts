@@ -39,10 +39,10 @@ export class ImportDto {
   file?: string;
 }
 
-class SourceDto {
-  @IsString()
-  content: string;
-}
+// class SourceDto {
+//   @IsString()
+//   content: string;
+// }
 
 export class VerifyRequestDto {
   @IsString()
@@ -69,8 +69,8 @@ export class VerifyRequestDto {
   source?: string;
 
   @IsOptional()
-  @IsObject()
-  sources?: Record<string, SourceDto>;
+  @IsString()
+  sources?: string;
 
   @IsOptional()
   @IsObject()
