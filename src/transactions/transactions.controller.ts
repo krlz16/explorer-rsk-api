@@ -2,6 +2,7 @@ import { Controller, Get, Param, Query } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
 import { BlockIdentifierPipe } from 'src/common/pipes/block-identifier.pipe';
 import { PaginationTakeValidationPipe } from 'src/common/pipes/pagination-take.pipe';
+import { TransactionHashValidationPipe } from 'src/common/pipes/transaction-hash.pipe';
 
 @Controller('txs')
 export class TransactionsController {
@@ -40,9 +41,17 @@ export class TransactionsController {
     return this.txsService.getPendingTransactions();
   }
 
+  /**
+   * Handles the GET request to fetch a transaction by its hash.
+   *
+   * @param {string} hash - The transaction hash to search for.
+   * @returns {Promise<{ data: any }>} - Returns the transaction details if found.
+   */
   @Get(':hash')
-  getTx(@Param('hash') hash: string) {
-    return this.txsService.getTx(hash);
+  getTransactionByHash(
+    @Param('hash', TransactionHashValidationPipe) hash: string,
+  ) {
+    return this.txsService.getTransactionByHash(hash);
   }
 
   @Get('/block/:blockOrhash')

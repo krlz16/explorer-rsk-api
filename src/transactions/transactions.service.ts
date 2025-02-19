@@ -108,47 +108,50 @@ export class TransactionsService {
   };
 
   async getLast24HoursTransactions() {
-    const now = Math.floor(Date.now() / 1000);
-    const last24Hours = now - 24 * 60 * 60;
+    const today = new Date();
 
-    const count = await this.prisma.transaction.count({
-      where: {
-        timestamp: {
-          gte: last24Hours,
-          lte: now,
+    const transactionsByDay =
+      await this.prisma.bo_number_transactions_daily_aggregated.findFirst({
+        where: {
+          date1: {
+            lte: today,
+          },
         },
-      },
-    });
+      });
 
     return {
       data: {
-        count,
+        date: transactionsByDay.date1,
+        count: transactionsByDay.numberOfTransactions,
       },
     };
   }
 
-  async getTx(hash: string) {
-    const response = await this.prisma.transaction.findFirst({
-      where: {
-        hash,
-      },
-      orderBy: {
-        txId: 'desc',
-      },
-    });
+  /**
+   * Retrieves a transaction by its hash.
+   *
+   * @param {string} hash - The transaction hash to search for.
+   * @returns {Promise<{ data: any }>} - Returns the formatted transaction details if found.
+   *   - If the transaction is in the database, it returns the formatted transaction.
+   *   - If the transaction is not found, it checks pending transactions.
+   *   - If the transaction is neither found nor pending, it returns `null`.
+   * @throws {Error} If there is a database query failure or unexpected error.
+   */
+  async getTransactionByHash(hash: string) {
+    try {
+      const transaction = await this.prisma.transaction.findUnique({
+        where: { hash },
+      });
 
-    if (!response) {
-      const resp = await this.getPendingTxByHash(hash);
-      return {
-        data: resp.data,
-      };
+      if (!transaction) {
+        const pendingTx = await this.getPendingTxByHash(hash);
+        return { data: pendingTx?.data ?? null };
+      }
+
+      return { data: this.txParser.formatTx(transaction) };
+    } catch (error) {
+      throw new Error(`Failed to fetch transaction by hash: ${error.message}`);
     }
-
-    const tx = this.txParser.formatTx(response);
-
-    return {
-      data: tx,
-    };
   }
 
   async getTxsByBlock(
