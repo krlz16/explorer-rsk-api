@@ -140,6 +140,9 @@ export class VerificationsService {
       // solidity source file verification method
       const sourceData = imports[0];
       // fix it with hash
+      if (!usedSources) {
+        return [];
+      }
       if (source === sourceData.contents) {
         sourceData.file = sourceData.name;
         usedSources.unshift(sourceData);
@@ -167,18 +170,20 @@ export class VerificationsService {
       // standard json input verification method
       const sourcesParsed = JSON.parse(sources);
       const sourcesToSave = [];
-      usedSources.forEach((s) => {
-        const { file, path } = s;
-        const sourceFile = sourcesParsed[path];
-        const { content: contents } = sourceFile;
+      if (usedSources && usedSources.length > 0) {
+        usedSources.forEach((s) => {
+          const { file, path } = s;
+          const sourceFile = sourcesParsed[path];
+          const { content: contents } = sourceFile;
 
-        if (file.split('.')[0] === name) {
-          // is the main contract
-          sourcesToSave.unshift({ name: file, contents });
-        } else {
-          sourcesToSave.push({ name: file, contents });
-        }
-      });
+          if (file.split('.')[0] === name) {
+            // is the main contract
+            sourcesToSave.unshift({ name: file, contents });
+          } else {
+            sourcesToSave.push({ name: file, contents });
+          }
+        });
+      }
       return sourcesToSave;
     }
   }
