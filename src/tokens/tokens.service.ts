@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import BigNumber from 'bignumber.js';
 import { TokenParserService } from 'src/common/parsers/token-parser.service';
 import { PrismaService } from 'src/prisma.service';
 
@@ -90,15 +91,94 @@ export class TokensService {
     }
   }
 
-  async getTokenByAddress(tokenAddress: string) {
+  async getTokensByAddress(
+    tokenAddress: string,
+    take: number,
+    cursor?: string,
+  ) {
     try {
-      const response = await this.prisma.token_address.findFirst({
-        where: {
-          address: tokenAddress,
+      if (take < 0 && !cursor) {
+        throw new BadRequestException(
+          'Cannot paginate backward without a cursor.',
+        );
+      }
+
+      const parsedCursor = this.decodeCursor(cursor);
+
+      const tokensWithDetails = await this.prisma.token_address.findMany({
+        take: take > 0 ? take + 1 : take - 1,
+        cursor: cursor
+          ? {
+              address_contract_blockNumber: {
+                ...parsedCursor,
+                address: tokenAddress,
+              },
+            }
+          : undefined,
+        skip: cursor ? 1 : undefined,
+        where: { address: tokenAddress },
+        orderBy: [
+          { contract: 'asc' },
+          { blockNumber: take > 0 ? 'desc' : 'asc' },
+        ],
+        include: {
+          contract_token_address_contractTocontract: {
+            select: {
+              name: true,
+            },
+          },
+          contract_details: {
+            select: {
+              symbol: true,
+              decimals: true,
+            },
+          },
         },
+        distinct: ['contract'],
       });
+
+      const hasMoreData = tokensWithDetails.length > Math.abs(take);
+
+      const paginatedResults = hasMoreData
+        ? tokensWithDetails.slice(0, Math.abs(take))
+        : tokensWithDetails;
+
+      const formattedData = paginatedResults.map((token) => ({
+        address: token.address,
+        contract: token.contract,
+        blockNumber: token.blockNumber,
+        blockHash: token.blockHash,
+        balance: token.balance
+          ? new BigNumber(token.balance)
+              .dividedBy(10 ** (token.contract_details?.decimals || 18))
+              .toString()
+          : '0',
+        name:
+          token.contract_token_address_contractTocontract?.name ||
+          '(Not provided)',
+        symbol: token.contract_details?.symbol || '(Not provided)',
+        decimals: token.contract_details?.decimals || 18,
+      }));
+
+      const nextCursor =
+        take > 0 && !hasMoreData
+          ? null
+          : this.encodeCursor(
+              paginatedResults[paginatedResults.length - 1].contract,
+              paginatedResults[paginatedResults.length - 1].blockNumber,
+            );
+
+      const prevCursor =
+        !cursor || (take < 0 && !hasMoreData)
+          ? null
+          : this.encodeCursor(
+              paginatedResults[0].contract,
+              paginatedResults[0].blockNumber,
+            );
+
       return {
-        data: response,
+        paginationData: { nextCursor, prevCursor, take, hasMoreData },
+        data: formattedData,
       };
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -107,6 +187,15 @@ export class TokensService {
       throw new Error(`Failed to fetch tokens: ${error.message}`);
     }
   }
+
+  encodeCursor = (contract: string, blockNumber: number) =>
+    `${contract}_${blockNumber}`;
+
+  decodeCursor = (cursor?: string) => {
+    if (!cursor) return undefined;
+    const [contract, blockNumber] = cursor.split('_');
+    return { contract, blockNumber: parseInt(blockNumber, 10) };
+  };
 
   async getTokenByNameOrSymbol(value: string) {
     try {

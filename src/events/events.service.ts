@@ -1,12 +1,66 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { event } from '@prisma/client';
-import BigNumber from 'bignumber.js';
+import { EventParserService } from 'src/events/parser/event-parser.service';
 import { AddressOrHash } from 'src/common/pipes/address-or-hash-validation.pipe';
 import { PrismaService } from 'src/prisma.service';
 
 @Injectable()
 export class EventsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private eventParser: EventParserService,
+  ) {}
+
+  /**
+   * Fetch transfer events by ID.
+   * @param {string} eventId - Event ID.
+   * @returns Transfer events details, including token deatils and transactions details.
+   */
+  async getEventById(eventId: string) {
+    try {
+      if (!eventId) {
+        throw new BadRequestException('EventId is required');
+      }
+      const response = await this.prisma.event.findFirst({
+        where: {
+          eventId,
+        },
+        include: {
+          address_event_addressToaddress: {
+            select: {
+              name: true,
+              address: true,
+              contract_contract_addressToaddress: {
+                select: {
+                  symbol: true,
+                },
+              },
+            },
+          },
+          transaction: true,
+        },
+        orderBy: {
+          eventId: 'desc',
+        },
+      });
+
+      console.log('response: aqui', response);
+      if (!response) {
+        return {
+          data: null,
+        };
+      }
+
+      const formattedData = this.eventParser.formatOneEvent(response);
+      return {
+        data: formattedData,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new Error(`Failed to fetch event by Id: ${error.message}`);
+    }
+  }
   /**
    * Fetch paginated events per address using keyset pagination.
    * @param {string} address - The address to filter events by.
@@ -132,6 +186,7 @@ export class EventsService {
               contract_contract_addressToaddress: {
                 select: {
                   symbol: true,
+                  contract_interface: true,
                 },
               },
             },
@@ -160,7 +215,8 @@ export class EventsService {
         ? response.slice(0, Math.abs(take))
         : response;
 
-      const formattedData = this.formatEvent(paginatedEvents);
+      const formattedData =
+        this.eventParser.formatTransferEvent(paginatedEvents);
 
       const nextCursor =
         take > 0 && !hasMoreData
@@ -187,36 +243,5 @@ export class EventsService {
       }
       throw new Error(`Failed to fetch events: ${error.message}`);
     }
-  }
-
-  /**
-   * Format event data.
-   * @param {event[]} events - Event data to format.
-   * @returns Formatted event data.
-   */
-  formatEvent(events: event[] | unknown[]) {
-    const formattedData = events.map((e) => {
-      e.timestamp = e.timestamp.toString() as unknown as bigint;
-      e.args = JSON.parse(e.args);
-      let totalSupply = 0;
-      if (e.args?.length === 3) {
-        totalSupply = new BigNumber(e.args[2].toString())
-          .dividedBy(new BigNumber(10).pow(18))
-          .toNumber();
-      }
-      const contrant_detail = {
-        name: e.address_event_addressToaddress.name,
-        symbol:
-          e.address_event_addressToaddress.contract_contract_addressToaddress
-            .symbol,
-      };
-      delete e.address_event_addressToaddress;
-      return {
-        ...e,
-        totalSupply,
-        contrant_detail,
-      };
-    });
-    return formattedData;
   }
 }

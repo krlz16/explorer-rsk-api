@@ -12,6 +12,16 @@ export class EventsController {
   constructor(private eventsService: EventsService) {}
 
   /**
+   * Fetch transfer events by ID.
+   * @param {string} id - Event ID.
+   * @returns Transfer events details, including token deatils and transactions details.
+   */
+  @Get('/:id')
+  getEventById(@Param('id') id: string) {
+    return this.eventsService.getEventById(id);
+  }
+
+  /**
    * Fetch a paginated list of events using keyset pagination.
    * @param {string} address - The address to filter events by.
    * @param {number} take - Number of records to retrieve.
@@ -34,7 +44,7 @@ export class EventsController {
    * @param {string} cursor - The eventID to start from (optional).
    * @returns Transfer events data details by Tx Hash or address & pagination.
    */
-  @Get('/tx/:addressOrhash')
+  @Get('/transfer/:addressOrhash')
   getEventByTxHash(
     @Param('addressOrhash', AddressOrHashValidationPipe)
     addressOrhash: AddressOrHash,
