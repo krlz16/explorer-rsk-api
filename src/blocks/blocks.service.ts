@@ -33,9 +33,9 @@ export class BlocksService {
       }
 
       const blocks = await this.prisma.block.findMany({
-        take: take > 0 ? take + 1 : take - 1,
+        take: take > 0 ? take + 2 : take - 2,
         cursor: cursor ? { number: cursor } : undefined,
-        skip: cursor ? 1 : undefined,
+        skip: cursor ? (take > 0 ? 1 : 0) : take < 0 ? 1 : undefined,
         orderBy: { number: 'desc' },
         select: {
           id: true,
@@ -65,7 +65,9 @@ export class BlocksService {
       const hasMoreData = blocks.length > Math.abs(take);
 
       const paginatedBlocks = hasMoreData
-        ? blocks.slice(0, Math.abs(take) + 1)
+        ? take > 0
+          ? blocks.slice(0, Math.abs(take) + 1)
+          : blocks.slice(1)
         : blocks;
 
       const formattedBlocks = this.blockParser.formatBlock(
