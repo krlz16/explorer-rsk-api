@@ -113,7 +113,9 @@ export class EventsService {
       const hasMoreData = response.length > Math.abs(take);
 
       const paginatedEvents = hasMoreData
-        ? response.slice(0, Math.abs(take))
+        ? take > 0
+          ? response.slice(0, Math.abs(take))
+          : response.slice(1)
         : response;
 
       const formattedData = paginatedEvents.map((e) => {
@@ -212,7 +214,9 @@ export class EventsService {
       const hasMoreData = response.length > Math.abs(take);
 
       const paginatedEvents = hasMoreData
-        ? response.slice(0, Math.abs(take))
+        ? take > 0
+          ? response.slice(0, Math.abs(take))
+          : response.slice(1)
         : response;
 
       const formattedData =
