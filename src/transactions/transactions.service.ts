@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import BigNumber from 'bignumber.js';
-import { TAKE_PAGE_DATA } from 'src/common/constants';
 import { PaginationService } from 'src/common/pagination/pagination.service';
 import { TxParserService } from 'src/common/parsers/transaction-parser.service';
 import { PrismaService } from 'src/prisma.service';
@@ -420,55 +419,99 @@ export class TransactionsService {
     }
   }
 
-  async getPendingTransactions() {
-    const currentTime = Math.floor(Date.now() / 1000).toString();
-    const twentyFourHoursAgo = (Number(currentTime) - 30 * 60).toString();
+  async getPendingTransactions(take: number, cursor?: string) {
+    try {
+      const currentTime = Math.floor(Date.now() / 1000);
+      const thirtyMinutesAgo = currentTime - 30 * 60;
 
-    const response = await this.prisma.transaction_pending.findMany({
-      take: TAKE_PAGE_DATA,
-      where: {
-        status: 'PENDING',
-        timestamp: {
-          gte: twentyFourHoursAgo,
+      const transactions = await this.prisma.transaction_pending.findMany({
+        take: take > 0 ? take + 1 : take - 1,
+        cursor: cursor
+          ? {
+              hash: cursor,
+            }
+          : undefined,
+        where: {
+          status: 'PENDING',
+          timestamp: {
+            gte: thirtyMinutesAgo.toString(),
+          },
         },
-      },
-      orderBy: {
-        blockNumber: 'desc',
-      },
-    });
+        orderBy: {
+          hash: 'desc',
+        },
+      });
 
-    const formatData = response?.map((tx) => {
-      tx.timestamp = Math.round(Number(tx.timestamp) * 1000).toString();
-      return tx;
-    });
-    return {
-      data: formatData,
-    };
+      if (transactions.length === 0) {
+        return {
+          data: [],
+        };
+      }
+
+      const hasMoreData = transactions.length > Math.abs(take);
+
+      const paginatedTransactions = hasMoreData
+        ? take > 0
+          ? transactions.slice(0, Math.abs(take))
+          : transactions.slice(1)
+        : transactions;
+
+      const formattedData = paginatedTransactions.map((tx) => ({
+        ...tx,
+        timestamp: Math.round(Number(tx.timestamp) * 1000).toString(),
+      }));
+
+      const nextCursor =
+        take > 0 && !hasMoreData
+          ? null
+          : formattedData[formattedData.length - 1]?.hash;
+
+      const prevCursor =
+        !cursor || (take < 0 && !hasMoreData) ? null : formattedData[0]?.hash;
+
+      return {
+        paginationData: {
+          nextCursor,
+          prevCursor,
+          take,
+          hasMoreData,
+        },
+        data: formattedData,
+      };
+    } catch (error) {
+      throw new Error(`Failed to fetch pending transactions: ${error.message}`);
+    }
   }
 
   async getPendingTxByHash(hash: string) {
-    const response = await this.prisma.transaction_pending.findFirst({
-      where: {
-        hash,
-      },
-    });
+    try {
+      const response = await this.prisma.transaction_pending.findFirst({
+        where: {
+          hash,
+        },
+      });
 
-    if (!response) {
+      if (!response) {
+        return {
+          data: null,
+        };
+      }
+      response.timestamp = Math.round(
+        Number(response.timestamp) * 1000,
+      ).toString();
+
+      response.value = new BigNumber(response.value.toString())
+        .dividedBy(1e18)
+        .toNumber()
+        .toString();
+
       return {
-        data: null,
+        data: response,
       };
+    } catch (error) {
+      throw new Error(
+        `Failed to fetch pending transaction by hash: ${error.message}`,
+      );
     }
-    response.timestamp = Math.round(
-      Number(response.timestamp) * 1000,
-    ).toString();
-
-    response.value = new BigNumber(response.value.toString())
-      .dividedBy(1e18)
-      .toNumber()
-      .toString();
-
-    return {
-      data: response,
-    };
   }
 }

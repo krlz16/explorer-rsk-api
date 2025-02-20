@@ -38,8 +38,11 @@ export class TransactionsController {
   }
 
   @Get('/pending')
-  getPendingTransactions() {
-    return this.txsService.getPendingTransactions();
+  getPendingTransactions(
+    @Query('take', PaginationTakeValidationPipe) take: number,
+    @Query('cursor') cursor: string,
+  ) {
+    return this.txsService.getPendingTransactions(take, cursor);
   }
 
   /**
