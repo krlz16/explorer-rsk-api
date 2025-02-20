@@ -3,6 +3,7 @@ import { TransactionsService } from './transactions.service';
 import { BlockIdentifierPipe } from 'src/common/pipes/block-identifier.pipe';
 import { PaginationTakeValidationPipe } from 'src/common/pipes/pagination-take.pipe';
 import { TransactionHashValidationPipe } from 'src/common/pipes/transaction-hash.pipe';
+import { AddressValidationPipe } from 'src/common/pipes/address-validation.pipe';
 
 @Controller('txs')
 export class TransactionsController {
@@ -24,7 +25,7 @@ export class TransactionsController {
    *          - **data**: The list of transactions matching the pagination criteria.
    */
   @Get('/')
-  getTxs(
+  getTransactions(
     @Query('take', PaginationTakeValidationPipe) take?: number,
     @Query('cursor') cursor?: string,
   ) {
@@ -64,11 +65,11 @@ export class TransactionsController {
   }
 
   @Get('/address/:address')
-  getTxsByAddress(
-    @Param('address') address: string,
-    @Query('page_data') page_data: number,
-    @Query('take_data') take_data: number,
+  getTransactionsByAddress(
+    @Param('address', AddressValidationPipe) address: string,
+    @Query('take', PaginationTakeValidationPipe) take: number,
+    @Query('cursor') cursor: string,
   ) {
-    return this.txsService.getTxsByAddress(address, page_data, take_data);
+    return this.txsService.getTransactionsByAddress(address, take, cursor);
   }
 }
