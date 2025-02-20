@@ -56,12 +56,12 @@ export class TransactionsController {
   }
 
   @Get('/block/:blockOrhash')
-  getTxByBlock(
+  getTransactionsByBlock(
     @Param('blockOrhash', BlockIdentifierPipe) blockOrhash: string,
-    @Query('page_data') page_data: number,
-    @Query('take_data') take_data: number,
+    @Query('take', PaginationTakeValidationPipe) take: number,
+    @Query('cursor') cursor: string,
   ) {
-    return this.txsService.getTxsByBlock(blockOrhash, page_data, take_data);
+    return this.txsService.getTransactionsByBlock(blockOrhash, take, cursor);
   }
 
   @Get('/address/:address')
