@@ -20,104 +20,108 @@ export class TransactionsService {
    * @returns Paginated transactions data.
    */
   async getTransactions(take: number, cursor?: string) {
-    if (take < 0 && !cursor) {
-      throw new BadRequestException(
-        'Cannot paginate backward without a cursor.',
-      );
-    }
+    try {
+      if (take < 0 && !cursor) {
+        throw new BadRequestException(
+          'Cannot paginate backward without a cursor.',
+        );
+      }
 
-    const parsedCursor = this.decodeCursor(cursor);
+      const parsedCursor = this.decodeCursor(cursor);
 
-    const transactions = await this.prisma.transaction.findMany({
-      take: take > 0 ? take + 1 : take - 1,
-      cursor: cursor
-        ? {
-            blockNumber_transactionIndex: {
-              blockNumber: parsedCursor.blockNumber,
-              transactionIndex: parsedCursor.transactionIndex,
-            },
-          }
-        : undefined,
-      select: {
-        hash: true,
-        blockNumber: true,
-        from: true,
-        to: true,
-        value: true,
-        gasUsed: true,
-        timestamp: true,
-        txType: true,
-        receipt: true,
-        date: true,
-        transactionIndex: true,
-      },
-      where: {
-        ...(cursor && {
-          OR: [
-            {
-              blockNumber: {
-                [take > 0 ? 'lt' : 'gt']: parsedCursor.blockNumber,
+      const transactions = await this.prisma.transaction.findMany({
+        take: take > 0 ? take + 1 : take - 1,
+        cursor: cursor
+          ? {
+              blockNumber_transactionIndex: {
+                blockNumber: parsedCursor.blockNumber,
+                transactionIndex: parsedCursor.transactionIndex,
               },
-            },
-            {
-              blockNumber: parsedCursor.blockNumber,
-              transactionIndex: {
-                [take > 0 ? 'lt' : 'gt']: parsedCursor.transactionIndex,
-              },
-            },
-          ],
-        }),
-      },
-      orderBy: [
-        { blockNumber: 'desc' },
-        {
-          transactionIndex: 'desc',
+            }
+          : undefined,
+        select: {
+          hash: true,
+          blockNumber: true,
+          from: true,
+          to: true,
+          value: true,
+          gasUsed: true,
+          timestamp: true,
+          txType: true,
+          receipt: true,
+          date: true,
+          transactionIndex: true,
         },
-      ],
-    });
+        where: {
+          ...(cursor && {
+            OR: [
+              {
+                blockNumber: {
+                  [take > 0 ? 'lt' : 'gt']: parsedCursor.blockNumber,
+                },
+              },
+              {
+                blockNumber: parsedCursor.blockNumber,
+                transactionIndex: {
+                  [take > 0 ? 'lt' : 'gt']: parsedCursor.transactionIndex,
+                },
+              },
+            ],
+          }),
+        },
+        orderBy: [
+          { blockNumber: 'desc' },
+          {
+            transactionIndex: 'desc',
+          },
+        ],
+      });
 
-    if (transactions.length === 0) {
+      if (transactions.length === 0) {
+        return {
+          pagination: { nextCursor: null, prevCursor: null, take },
+          data: [],
+        };
+      }
+
+      const hasMoreData = transactions.length > Math.abs(take);
+
+      const paginatedTransactions = hasMoreData
+        ? take > 0
+          ? transactions.slice(0, Math.abs(take))
+          : transactions.slice(1)
+        : transactions;
+
+      const formattedData = this.txParser.formatTxs(paginatedTransactions);
+
+      const nextCursor =
+        take > 0 && !hasMoreData
+          ? null
+          : this.encodeCursor(
+              formattedData[formattedData.length - 1]?.blockNumber,
+              formattedData[formattedData.length - 1]?.transactionIndex,
+            );
+
+      const prevCursor =
+        !cursor || (take < 0 && !hasMoreData)
+          ? null
+          : this.encodeCursor(
+              formattedData[0]?.blockNumber,
+              formattedData[0]?.transactionIndex,
+            );
+
       return {
-        pagination: { nextCursor: null, prevCursor: null, take },
-        data: [],
+        paginationData: {
+          nextCursor,
+          prevCursor,
+          take,
+          hasMoreData,
+        },
+        data: formattedData,
       };
+    } catch (error) {
+      throw new Error(`Failed to fetch transactions: ${error.message}`);
     }
-
-    const hasMoreData = transactions.length > Math.abs(take);
-
-    const paginatedTransactions = hasMoreData
-      ? take > 0
-        ? transactions.slice(0, Math.abs(take))
-        : transactions.slice(1)
-      : transactions;
-
-    const formattedData = this.txParser.formatTxs(paginatedTransactions);
-
-    const nextCursor =
-      take > 0 && !hasMoreData
-        ? null
-        : this.encodeCursor(
-            formattedData[formattedData.length - 1]?.blockNumber,
-            formattedData[formattedData.length - 1]?.transactionIndex,
-          );
-
-    const prevCursor =
-      !cursor || (take < 0 && !hasMoreData)
-        ? null
-        : this.encodeCursor(
-            formattedData[0]?.blockNumber,
-            formattedData[0]?.transactionIndex,
-          );
-
-    return {
-      paginationData: {
-        nextCursor,
-        prevCursor,
-        take,
-        hasMoreData,
-      },
-      data: formattedData,
-    };
   }
 
   encodeCursor = (blockNumber: number, transactionIndex: number) =>
@@ -133,23 +137,27 @@ export class TransactionsService {
   };
 
   async getLast24HoursTransactions() {
-    const today = new Date();
+    try {
+      const today = new Date();
 
-    const transactionsByDay =
-      await this.prisma.bo_number_transactions_daily_aggregated.findFirst({
-        where: {
-          date1: {
-            lte: today,
+      const transactionsByDay =
+        await this.prisma.bo_number_transactions_daily_aggregated.findFirst({
+          where: {
+            date1: {
+              lte: today,
+            },
           },
-        },
-      });
+        });
 
-    return {
-      data: {
-        date: transactionsByDay.date1,
-        count: transactionsByDay.numberOfTransactions,
-      },
-    };
+      return {
+        data: {
+          date: transactionsByDay.date1,
+          count: transactionsByDay.numberOfTransactions,
+        },
+      };
+    } catch (error) {
+      throw new Error(`Failed to fetch transactions: ${error.message}`);
+    }
   }
 
   /**
@@ -191,105 +199,111 @@ export class TransactionsService {
     take: number,
     cursor?: string,
   ) {
-    if (take < 0 && !cursor) {
-      throw new BadRequestException(
-        'Cannot paginate backward without a cursor.',
+    try {
+      if (take < 0 && !cursor) {
+        throw new BadRequestException(
+          'Cannot paginate backward without a cursor.',
+        );
+      }
+
+      const parsedCursor = this.decodeCursor(cursor);
+
+      const where =
+        typeof blockOrHash === 'number'
+          ? { blockNumber: blockOrHash }
+          : { blockHash: blockOrHash };
+
+      const transactions = await this.prisma.transaction.findMany({
+        take: take > 0 ? take + 1 : take - 1,
+        cursor: cursor
+          ? {
+              blockNumber_transactionIndex: {
+                blockNumber: parsedCursor.blockNumber,
+                transactionIndex: parsedCursor.transactionIndex,
+              },
+            }
+          : undefined,
+        select: {
+          hash: true,
+          blockNumber: true,
+          from: true,
+          to: true,
+          value: true,
+          gasUsed: true,
+          timestamp: true,
+          txType: true,
+          receipt: true,
+          date: true,
+          transactionIndex: true,
+        },
+        where: {
+          ...where,
+          ...(cursor && {
+            OR: [
+              {
+                blockNumber: {
+                  [take > 0 ? 'lt' : 'gt']: parsedCursor.blockNumber,
+                },
+              },
+              {
+                blockNumber: parsedCursor.blockNumber,
+                transactionIndex: {
+                  [take > 0 ? 'lt' : 'gt']: parsedCursor.transactionIndex,
+                },
+              },
+            ],
+          }),
+        },
+        orderBy: [{ transactionIndex: 'desc' }],
+      });
+
+      if (transactions.length === 0) {
+        return {
+          pagination: { nextCursor: null, prevCursor: null, take },
+          data: [],
+        };
+      }
+
+      const hasMoreData = transactions.length > Math.abs(take);
+
+      const paginatedTransactions = hasMoreData
+        ? take > 0
+          ? transactions.slice(0, Math.abs(take))
+          : transactions.slice(1)
+        : transactions;
+
+      const formattedData = this.txParser.formatTxs(paginatedTransactions);
+
+      const nextCursor =
+        take > 0 && !hasMoreData
+          ? null
+          : this.encodeCursor(
+              formattedData[formattedData.length - 1]?.blockNumber,
+              formattedData[formattedData.length - 1]?.transactionIndex,
+            );
+
+      const prevCursor =
+        !cursor || (take < 0 && !hasMoreData)
+          ? null
+          : this.encodeCursor(
+              formattedData[0]?.blockNumber,
+              formattedData[0]?.transactionIndex,
+            );
+
+      return {
+        paginationData: {
+          nextCursor,
+          prevCursor,
+          take,
+          hasMoreData,
+        },
+        data: formattedData,
+      };
+    } catch (error) {
+      throw new Error(
+        `Failed to fetch transactions by block: ${error.message}`,
       );
     }
-
-    const parsedCursor = this.decodeCursor(cursor);
-
-    const where =
-      typeof blockOrHash === 'number'
-        ? { blockNumber: blockOrHash }
-        : { blockHash: blockOrHash };
-
-    const transactions = await this.prisma.transaction.findMany({
-      take: take > 0 ? take + 1 : take - 1,
-      cursor: cursor
-        ? {
-            blockNumber_transactionIndex: {
-              blockNumber: parsedCursor.blockNumber,
-              transactionIndex: parsedCursor.transactionIndex,
-            },
-          }
-        : undefined,
-      select: {
-        hash: true,
-        blockNumber: true,
-        from: true,
-        to: true,
-        value: true,
-        gasUsed: true,
-        timestamp: true,
-        txType: true,
-        receipt: true,
-        date: true,
-        transactionIndex: true,
-      },
-      where: {
-        ...where,
-        ...(cursor && {
-          OR: [
-            {
-              blockNumber: {
-                [take > 0 ? 'lt' : 'gt']: parsedCursor.blockNumber,
-              },
-            },
-            {
-              blockNumber: parsedCursor.blockNumber,
-              transactionIndex: {
-                [take > 0 ? 'lt' : 'gt']: parsedCursor.transactionIndex,
-              },
-            },
-          ],
-        }),
-      },
-      orderBy: [{ transactionIndex: 'desc' }],
-    });
-
-    if (transactions.length === 0) {
-      return {
-        pagination: { nextCursor: null, prevCursor: null, take },
-        data: [],
-      };
-    }
-
-    const hasMoreData = transactions.length > Math.abs(take);
-
-    const paginatedTransactions = hasMoreData
-      ? take > 0
-        ? transactions.slice(0, Math.abs(take))
-        : transactions.slice(1)
-      : transactions;
-
-    const formattedData = this.txParser.formatTxs(paginatedTransactions);
-
-    const nextCursor =
-      take > 0 && !hasMoreData
-        ? null
-        : this.encodeCursor(
-            formattedData[formattedData.length - 1]?.blockNumber,
-            formattedData[formattedData.length - 1]?.transactionIndex,
-          );
-
-    const prevCursor =
-      !cursor || (take < 0 && !hasMoreData)
-        ? null
-        : this.encodeCursor(
-            formattedData[0]?.blockNumber,
-            formattedData[0]?.transactionIndex,
-          );
-
-    return {
-      paginationData: {
-        nextCursor,
-        prevCursor,
-        take,
-        hasMoreData,
-      },
-      data: formattedData,
-    };
   }
 
   /**
@@ -304,100 +318,106 @@ export class TransactionsService {
     take: number,
     cursor?: string,
   ) {
-    if (take < 0 && !cursor) {
-      throw new BadRequestException(
-        'Cannot paginate backward without a cursor.',
+    try {
+      if (take < 0 && !cursor) {
+        throw new BadRequestException(
+          'Cannot paginate backward without a cursor.',
+        );
+      }
+
+      const parsedCursor = this.decodeCursor(cursor);
+
+      const transactions = await this.prisma.transaction.findMany({
+        take: take > 0 ? take + 1 : take - 1,
+        cursor: cursor
+          ? {
+              blockNumber_transactionIndex: {
+                blockNumber: parsedCursor.blockNumber,
+                transactionIndex: parsedCursor.transactionIndex,
+              },
+            }
+          : undefined,
+        select: {
+          hash: true,
+          blockNumber: true,
+          from: true,
+          to: true,
+          value: true,
+          gasUsed: true,
+          timestamp: true,
+          txType: true,
+          receipt: true,
+          date: true,
+          transactionIndex: true,
+        },
+        where: {
+          OR: [{ from: address }, { to: address }],
+          ...(cursor && {
+            OR: [
+              {
+                blockNumber: {
+                  [take > 0 ? 'lt' : 'gt']: parsedCursor.blockNumber,
+                },
+              },
+              {
+                blockNumber: parsedCursor.blockNumber,
+                transactionIndex: {
+                  [take > 0 ? 'lt' : 'gt']: parsedCursor.transactionIndex,
+                },
+              },
+            ],
+          }),
+        },
+        orderBy: [{ blockNumber: 'desc' }, { transactionIndex: 'desc' }],
+      });
+
+      if (transactions.length === 0) {
+        return {
+          pagination: { nextCursor: null, prevCursor: null, take },
+          data: [],
+        };
+      }
+
+      const hasMoreData = transactions.length > Math.abs(take);
+
+      const paginatedTransactions = hasMoreData
+        ? take > 0
+          ? transactions.slice(0, Math.abs(take))
+          : transactions.slice(1)
+        : transactions;
+
+      const formattedData = this.txParser.formatTxs(paginatedTransactions);
+
+      const nextCursor =
+        take > 0 && !hasMoreData
+          ? null
+          : this.encodeCursor(
+              formattedData[formattedData.length - 1]?.blockNumber,
+              formattedData[formattedData.length - 1]?.transactionIndex,
+            );
+
+      const prevCursor =
+        !cursor || (take < 0 && !hasMoreData)
+          ? null
+          : this.encodeCursor(
+              formattedData[0]?.blockNumber,
+              formattedData[0]?.transactionIndex,
+            );
+
+      return {
+        paginationData: {
+          nextCursor,
+          prevCursor,
+          take,
+          hasMoreData,
+        },
+        data: formattedData,
+      };
+    } catch (error) {
+      throw new Error(
+        `Failed to fetch transactions by address: ${error.message}`,
       );
     }
-
-    const parsedCursor = this.decodeCursor(cursor);
-
-    const transactions = await this.prisma.transaction.findMany({
-      take: take > 0 ? take + 1 : take - 1,
-      cursor: cursor
-        ? {
-            blockNumber_transactionIndex: {
-              blockNumber: parsedCursor.blockNumber,
-              transactionIndex: parsedCursor.transactionIndex,
-            },
-          }
-        : undefined,
-      select: {
-        hash: true,
-        blockNumber: true,
-        from: true,
-        to: true,
-        value: true,
-        gasUsed: true,
-        timestamp: true,
-        txType: true,
-        receipt: true,
-        date: true,
-        transactionIndex: true,
-      },
-      where: {
-        OR: [{ from: address }, { to: address }],
-        ...(cursor && {
-          OR: [
-            {
-              blockNumber: {
-                [take > 0 ? 'lt' : 'gt']: parsedCursor.blockNumber,
-              },
-            },
-            {
-              blockNumber: parsedCursor.blockNumber,
-              transactionIndex: {
-                [take > 0 ? 'lt' : 'gt']: parsedCursor.transactionIndex,
-              },
-            },
-          ],
-        }),
-      },
-      orderBy: [{ blockNumber: 'desc' }, { transactionIndex: 'desc' }],
-    });
-
-    if (transactions.length === 0) {
-      return {
-        pagination: { nextCursor: null, prevCursor: null, take },
-        data: [],
-      };
-    }
-
-    const hasMoreData = transactions.length > Math.abs(take);
-
-    const paginatedTransactions = hasMoreData
-      ? take > 0
-        ? transactions.slice(0, Math.abs(take)) // Trim last record when going forward
-        : transactions.slice(1) // Trim first record when going backward
-      : transactions;
-
-    const formattedData = this.txParser.formatTxs(paginatedTransactions);
-
-    const nextCursor =
-      take > 0 && !hasMoreData
-        ? null
-        : this.encodeCursor(
-            formattedData[formattedData.length - 1]?.blockNumber,
-            formattedData[formattedData.length - 1]?.transactionIndex,
-          );
-
-    const prevCursor =
-      !cursor || (take < 0 && !hasMoreData)
-        ? null
-        : this.encodeCursor(
-            formattedData[0]?.blockNumber,
-            formattedData[0]?.transactionIndex,
-          );
-
-    return {
-      paginationData: {
-        nextCursor,
-        prevCursor,
-        take,
-        hasMoreData,
-      },
-      data: formattedData,
-    };
   }
 
   async getPendingTransactions() {
