@@ -11,6 +11,11 @@ import {
 export class EventsController {
   constructor(private eventsService: EventsService) {}
 
+  /**
+   * Fetch transfer events by ID.
+   * @param {string} id - Event ID.
+   * @returns Transfer events details, including token deatils and transactions details.
+   */
   @Get('/:id')
   getEventById(@Param('id') id: string) {
     return this.eventsService.getEventById(id);
