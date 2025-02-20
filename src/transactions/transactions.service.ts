@@ -31,13 +31,13 @@ export class TransactionsService {
     const transactions = await this.prisma.transaction.findMany({
       take: take > 0 ? take + 1 : take - 1,
       cursor: cursor
-        ? { blockNumber_transactionIndex: parsedCursor }
+        ? {
+            blockNumber_transactionIndex: {
+              blockNumber: parsedCursor.blockNumber,
+              transactionIndex: parsedCursor.transactionIndex,
+            },
+          }
         : undefined,
-      skip: cursor ? 1 : undefined,
-      orderBy: [
-        { blockNumber: take > 0 ? 'desc' : 'asc' },
-        { transactionIndex: 'desc' },
-      ],
       select: {
         hash: true,
         blockNumber: true,
@@ -51,6 +51,29 @@ export class TransactionsService {
         date: true,
         transactionIndex: true,
       },
+      where: {
+        ...(cursor && {
+          OR: [
+            {
+              blockNumber: {
+                [take > 0 ? 'lt' : 'gt']: parsedCursor.blockNumber,
+              },
+            },
+            {
+              blockNumber: parsedCursor.blockNumber,
+              transactionIndex: {
+                [take > 0 ? 'lt' : 'gt']: parsedCursor.transactionIndex,
+              },
+            },
+          ],
+        }),
+      },
+      orderBy: [
+        { blockNumber: 'desc' },
+        {
+          transactionIndex: 'desc',
+        },
+      ],
     });
 
     if (transactions.length === 0) {
@@ -63,7 +86,9 @@ export class TransactionsService {
     const hasMoreData = transactions.length > Math.abs(take);
 
     const paginatedTransactions = hasMoreData
-      ? transactions.slice(0, Math.abs(take))
+      ? take > 0
+        ? transactions.slice(0, Math.abs(take))
+        : transactions.slice(1)
       : transactions;
 
     const formattedData = this.txParser.formatTxs(paginatedTransactions);
