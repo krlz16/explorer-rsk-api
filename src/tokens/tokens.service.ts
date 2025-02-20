@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { TAKE_PAGE_DATA } from 'src/common/constants';
 import BigNumber from 'bignumber.js';
 import { TokenParserService } from 'src/common/parsers/token-parser.service';
 import { PrismaService } from 'src/prisma.service';
@@ -199,26 +200,45 @@ export class TokensService {
 
   async getTokenByNameOrSymbol(value: string) {
     try {
-      const response = await this.prisma.address.findMany({
-        take: 20,
-        where: {
-          OR: [
-            {
-              name: {
-                contains: value,
-                mode: 'insensitive',
-              },
-            },
-            {
-              contract_contract_addressToaddress: {
-                symbol: {
-                  contains: value,
-                  mode: 'insensitive',
-                },
-              },
-            },
-          ],
+      let where = {};
+
+      const queryByAddressName = {
+        name: {
+          contains: value,
+          mode: 'insensitive',
         },
+      };
+
+      const queryByContractSymbol = {
+        contract_contract_addressToaddress: {
+          symbol: {
+            contains: value,
+            mode: 'insensitive',
+          },
+        },
+      };
+
+      const queryBySingleCharSymbol = {
+        contract_contract_addressToaddress: {
+          symbol: {
+            equals: value,
+            mode: 'insensitive',
+          },
+        },
+      };
+
+      if (value.length <= 1) {
+        // search only 1-length symbols
+        where = queryBySingleCharSymbol;
+      } else {
+        // search by name or symbol
+        where = {
+          OR: [queryByAddressName, queryByContractSymbol],
+        };
+      }
+      const response = await this.prisma.address.findMany({
+        take: TAKE_PAGE_DATA,
+        where,
         select: {
           address: true,
           name: true,
