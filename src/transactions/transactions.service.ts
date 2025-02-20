@@ -176,7 +176,7 @@ export class TransactionsService {
       });
 
       if (!transaction) {
-        const pendingTx = await this.getPendingTxByHash(hash);
+        const pendingTx = await this.getPendingTransactionByHash(hash);
         return { data: pendingTx?.data ?? null };
       }
 
@@ -483,30 +483,39 @@ export class TransactionsService {
     }
   }
 
-  async getPendingTxByHash(hash: string) {
+  /**
+   * Retrieves a pending transaction by its hash.
+   *
+   * @param {string} hash - The transaction hash to search for.
+   * @returns {Promise<{ data: any }>} - Returns the formatted transaction details if found.
+   *   - If the transaction is in the database, it returns the formatted transaction.
+   *   - If the transaction is not found, it checks pending transactions.
+   *   - If the transaction is neither found nor pending, it returns `null`.
+   * @throws {Error} If there is a database query failure or unexpected error.
+   */
+  async getPendingTransactionByHash(hash: string) {
     try {
-      const response = await this.prisma.transaction_pending.findFirst({
-        where: {
-          hash,
-        },
+      const transaction = await this.prisma.transaction_pending.findUnique({
+        where: { hash },
       });
 
-      if (!response) {
+      if (!transaction) {
         return {
           data: null,
         };
       }
-      response.timestamp = Math.round(
-        Number(response.timestamp) * 1000,
+
+      transaction.timestamp = Math.round(
+        Number(transaction.timestamp) * 1000,
       ).toString();
 
-      response.value = new BigNumber(response.value.toString())
+      transaction.value = new BigNumber(transaction.value.toString())
         .dividedBy(1e18)
         .toNumber()
         .toString();
 
       return {
-        data: response,
+        data: transaction,
       };
     } catch (error) {
       throw new Error(
