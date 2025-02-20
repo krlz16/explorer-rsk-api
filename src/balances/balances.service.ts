@@ -54,7 +54,9 @@ export class BalancesService {
       const hasMoreData = response.length > Math.abs(take);
 
       const paginatedBalances = hasMoreData
-        ? response.slice(0, Math.abs(take))
+        ? take > 0
+          ? response.slice(0, Math.abs(take))
+          : response.slice(1)
         : response;
 
       const formattedData = paginatedBalances.map((b) => {

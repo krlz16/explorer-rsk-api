@@ -143,7 +143,7 @@ describe('BlocksService', () => {
     });
 
     expect(prismaMock.block.findMany).toHaveBeenCalledWith({
-      take: 3,
+      take: 4,
       cursor: { number: 98 },
       skip: 1,
       orderBy: { number: 'desc' },
@@ -164,7 +164,7 @@ describe('BlocksService', () => {
     });
 
     expect(prismaMock.block.findMany).toHaveBeenCalledWith({
-      take: 3,
+      take: 4,
       orderBy: { number: 'desc' },
       select: expect.any(Object),
     });
