@@ -62,7 +62,9 @@ export class TokensService {
       const hasMoreData = response.length > Math.abs(take);
 
       const paginatedTokens = hasMoreData
-        ? response.slice(0, Math.abs(take))
+        ? take > 0
+          ? response.slice(0, Math.abs(take))
+          : response.slice(1)
         : response;
 
       const formattedData = this.tokenParser.formatTokens(paginatedTokens);
@@ -141,7 +143,9 @@ export class TokensService {
       const hasMoreData = tokensWithDetails.length > Math.abs(take);
 
       const paginatedResults = hasMoreData
-        ? tokensWithDetails.slice(0, Math.abs(take))
+        ? take > 0
+          ? tokensWithDetails.slice(0, Math.abs(take))
+          : tokensWithDetails.slice(1)
         : tokensWithDetails;
 
       const formattedData = paginatedResults.map((token) => ({

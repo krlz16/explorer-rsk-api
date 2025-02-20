@@ -60,7 +60,9 @@ export class AddressesService {
       const hasMoreData = addresses.length > Math.abs(take);
 
       const paginatedAddresses = hasMoreData
-        ? addresses.slice(0, Math.abs(take))
+        ? take > 0
+          ? addresses.slice(0, Math.abs(take))
+          : addresses.slice(1)
         : addresses;
 
       const formattedAddresses =

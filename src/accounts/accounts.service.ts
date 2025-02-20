@@ -55,7 +55,9 @@ export class AccountsService {
       const hasMoreData = tokensWithDetails.length > Math.abs(take);
 
       const paginatedResults = hasMoreData
-        ? tokensWithDetails.slice(0, Math.abs(take))
+        ? take > 0
+          ? tokensWithDetails.slice(0, Math.abs(take))
+          : tokensWithDetails.slice(1)
         : tokensWithDetails;
 
       const formattedData = paginatedResults.map((token) => ({
